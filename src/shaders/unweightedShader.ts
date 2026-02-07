@@ -9,10 +9,14 @@ uniform int       u_seedCount;      // Number of active tiles
 uniform vec2      u_resolution;     // Canvas resolution
 uniform vec3      u_palette[${MAX_PALETTE_SIZE}]; // Color palette array (fixed max size)
 uniform int       u_paletteSize;    // Actual number of colors in palette
+uniform int       u_renderIds;      // 0 = visual, 1 = IDs
+uniform vec2      u_offset;         // Top-left position of the game container
+uniform vec2      u_containerSize;  // Size of the game container
+uniform float     u_gapSize;        // The width of the gap between tiles
+uniform float     u_aaSize;         // The antialiasing width
 
 // Constants
-const float GAP_SIZE = 3.0; // The width of the gap between tiles (now exact pixels)
-const float AA_SIZE  = 1.5; // The smoothing width for anti-aliasing
+// const float AA_SIZE  = 1.5; // (Removed, use uniform)
 
 out vec4 outColor;
 
@@ -22,9 +26,26 @@ float hash(vec2 p) {
 }
 
 void main() {
-    // Normalize coordinates: Invert Y to match screen space
-    vec2 pixelPos = gl_FragCoord.xy;
-    pixelPos.y = u_resolution.y - pixelPos.y;
+    // 1. Calculate pixel position relative to the container
+    // gl_FragCoord.xy is in window coordinates (bottom-left origin)
+    // We want coordinates relative to the container's top-left
+    
+    // Invert Y to match screen space (top-left origin)
+    float screenY = u_resolution.y - gl_FragCoord.y;
+    vec2 screenPos = vec2(gl_FragCoord.x, screenY);
+    
+    // Apply offset to get local container coordinates
+    vec2 localPos = screenPos - u_offset;
+    
+    // 2. Clipping: Discard pixels outside the container
+    // We can add a small padding/margin if we want the edge to be soft, but hard clip is fine for now
+    if (localPos.x < 0.0 || localPos.x > u_containerSize.x || 
+        localPos.y < 0.0 || localPos.y > u_containerSize.y) {
+        discard; 
+        // OR: return vec4(0.0); if we want transparent background
+    }
+
+    vec2 pixelPos = localPos; // Use local coordinates for Voronoi calculation
 
     // --- Pass 1: Find the closest seed ---
     float minDist = 1e10;
@@ -88,6 +109,22 @@ void main() {
         minEdgeDist = 1000.0;
     }
 
+    if (u_renderIds == 1) {
+        // Output ID if active
+        // 0 = no ID, index+1 = ID? Or just index.
+        // Let's us e index directly as alpha is validity.
+        if (closestIndex == -1) {
+            outColor = vec4(0.0);
+        } else {
+            int idx = closestIndex;
+            float r = float(idx & 255) / 255.0;
+            float g = float((idx >> 8) & 255) / 255.0;
+            float b = float((idx >> 16) & 255) / 255.0;
+            outColor = vec4(r, g, b, 1.0);
+        }
+        return;
+    }
+
     // Coloring
     vec4 closestSeed = texelFetch(u_seedTexture, ivec2(closestIndex, 0), 0);
     
@@ -106,59 +143,24 @@ void main() {
     vec2 lightDir = normalize(vec2(-1.0, -1.0));
     
     // To get a bevel, we need a gradient.
-    // The "slope" of the bevel depends on the direction to the nearest edge.
-    // We don't have that vector computed analytically (we just took the min distance).
-    // However, we can approximate the normal based on the vector to the center,
-    // OR just use the proximity for intensity. 
-    // The original code used centerToPixel.
     
     vec2 centerToPixel = pixelPos - closestSeedPos;
     float centerDist = length(centerToPixel);
     vec2 dirFromCenter = centerDist > 0.001 ? centerToPixel / centerDist : vec2(0.0);
     float lightDot = dot(dirFromCenter, lightDir);
-    
-    // Bevel Params
-    float bevelWidth = 12.0; 
+ 
     
     // Edge Proximity:
-    // minEdgeDist goes from 0 (at edge) to large (at center).
-    // We want effects near the gap.
-    // GAP_SIZE is the half-width of the gap in pixels? 
-    // Wait, if GAP_SIZE is the full gap, then we want distance from edge < GAP_SIZE/2.
-    // The original code used GAP_SIZE as a threshold on (d2-d1). 
-    // Here minEdgeDist is literal pixels from the mathematical edge.
-    // So if we want a gap of width W, we discard pixels where minEdgeDist < W/2.
-    // Let's assume GAP_SIZE is the full visual gap width.
-    float halfGap = GAP_SIZE * 0.5;
-    
-    // Bevel starts at halfGap and goes inwards by bevelWidth.
-    // 0.0 at (halfGap + bevelWidth), 1.0 at halfGap.
-    float edgeProximity = 1.0 - smoothstep(halfGap, halfGap + bevelWidth, minEdgeDist);
-    
-    float bevelStrength = 0.0;
-    float specularStrength = 0.0;
-    
+    float halfGap = u_gapSize * 0.25;
+        
     if (highlightFactor > 0.5) {
         // --- PRESSED / INSET EFFECT ---
         baseColor *= 0.7; 
-        bevelStrength = -0.8 * edgeProximity;
-    } else {
-        // --- ELEVATED / BEVEL EFFECT ---
-        bevelStrength = 0.8 * edgeProximity;
-        specularStrength = pow(max(0.0, lightDot), 16.0) * edgeProximity * 0.6;
     }
-
-    // Apply the bevel
-    // baseColor += lightDot * bevelStrength; // Old way with dot
-    // New way: we sort of fake the normal with lightDot, scaled by proximity.
-    // It creates the "pillow" look.
-    
-    // Apply specular highlight
-    // baseColor += specularStrength;
 
     // Edges & Anti-aliasing
     // We want to discard or darken pixels where minEdgeDist < halfGap
-    float edgeFactor = smoothstep(halfGap, halfGap + AA_SIZE, minEdgeDist);
+    float edgeFactor = smoothstep(halfGap, halfGap + u_aaSize, minEdgeDist);
     
     // Apply edge darkening / border color
     vec3 borderColor = mix(vec3(0.08), vec3(0.15, 0.15, 0.2), highlightFactor);

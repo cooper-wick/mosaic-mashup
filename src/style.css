@@ -16,56 +16,27 @@
 body {
   margin: 0;
   display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  /* place-items: center;  <-- Removed to allow full stretch */
+  overflow: hidden;
+  /* Prevent scrollbars */
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* ... existing button styles ... */
+
+#wrap {
+  position: relative;
+  /* Removed border-radius, box-shadow, border */
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  touch-action: none;
+  background: #000;
+  /* Ensure background is solid */
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-
-button:hover {
-  border-color: #646cff;
-}
-
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
-#tile-requirements {
+#bucket-container {
   position: fixed;
   bottom: 20px;
   left: 50%;
@@ -74,26 +45,71 @@ button:focus-visible {
   gap: 15px;
   background: rgba(0, 0, 0, 0.5);
   padding: 10px 20px;
-  border-radius: 20px;
+  border-radius: 40px;
   pointer-events: none;
   /* Let clicks pass through */
   color: white;
-  font-family: sans-serif;
+  font-family: system-ui, sans-serif;
   font-weight: bold;
   z-index: 100;
+  transition: opacity 0.3s;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.tile-count {
+.mosaic-bucket {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  position: relative;
+  transition: transform 0.2s, background-color 0.2s, opacity 0.2s;
 }
 
-.tile-dot {
-  width: 16px;
-  height: 16px;
+.mosaic-bucket.interactive:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.mosaic-bucket.filled {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+.bucket-dot {
+  position: absolute;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  border: 2px solid white;
+  border-radius: 50%;
+  opacity: 0.8;
+  z-index: 0;
+  transition: opacity 0.3s;
+}
+
+.mosaic-bucket.filled .bucket-dot {
+  opacity: 1.0;
+}
+
+.bucket-count,
+.bucket-check {
+  z-index: 1;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.bucket-check {
+  font-size: 24px;
+  color: #fff;
+  filter: drop-shadow(0 0 4px #2ecc70);
+}
+
+.mosaic-bucket.reveal-mode .bucket-count {
+  font-size: 20px;
 }
 
 #lobby {
@@ -112,7 +128,28 @@ button:focus-visible {
   color: white;
   font-size: 4rem;
   margin-bottom: 20px;
-  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+#game-instruction {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 2.5rem;
+  font-weight: bold;
+  pointer-events: none;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 1.0), 0 0 20px rgba(0, 0, 0, 0.9);
+  transition: opacity 0.5s ease-out;
+  opacity: 0;
+  z-index: 200;
+  text-align: center;
+  width: 100%;
+}
+
+#game-instruction.visible {
+  opacity: 1;
 }
 
 #draw-controls {

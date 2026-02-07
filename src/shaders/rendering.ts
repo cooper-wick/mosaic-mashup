@@ -28,6 +28,11 @@ export interface VoronoiContext {
         resolution: WebGLUniformLocation;
         useClip: WebGLUniformLocation;
         paletteSize: WebGLUniformLocation;
+        renderIds: WebGLUniformLocation;
+        offset: WebGLUniformLocation;
+        containerSize: WebGLUniformLocation;
+        gapSize: WebGLUniformLocation;
+        aaSize: WebGLUniformLocation;
     };
 }
 
@@ -80,12 +85,24 @@ export function initGL(canvas: HTMLCanvasElement): VoronoiContext {
     const uSeedCount = gl.getUniformLocation(program, "u_seedCount")!;
     const uUseClip = gl.getUniformLocation(program, "u_useClip")!;
     const uPaletteSize = gl.getUniformLocation(program, "u_paletteSize")!;
+    const uRenderIds = gl.getUniformLocation(program, "u_renderIds")!;
+    const uOffset = gl.getUniformLocation(program, "u_offset")!;
+    const uContainerSize = gl.getUniformLocation(program, "u_containerSize")!;
+    const uGapSize = gl.getUniformLocation(program, "u_gapSize")!;
+    const uAaSize = gl.getUniformLocation(program, "u_aaSize")!;
+
+    console.log("[MosaicDebug] initGL called. uGapSize location:", uGapSize);
 
     // Set initial uniform values
     gl.uniform1i(gl.getUniformLocation(program, "u_seedTexture"), 0);
     gl.uniform2f(uResolution, viewport.width, viewport.height);
     gl.uniform1i(uSeedCount, 0);
     gl.uniform1i(uUseClip, 0);
+    gl.uniform1i(uRenderIds, 0);
+    gl.uniform2f(uOffset, 0, 0);
+    gl.uniform2f(uContainerSize, viewport.width, viewport.height);
+    gl.uniform1f(uGapSize, 3.0); // Default gap size
+    gl.uniform1f(uAaSize, 1.5); // Default AA size
 
     // Initialize palette uniforms
     gl.uniform1i(uPaletteSize, palette.length);
@@ -104,6 +121,11 @@ export function initGL(canvas: HTMLCanvasElement): VoronoiContext {
             resolution: uResolution,
             useClip: uUseClip,
             paletteSize: uPaletteSize,
+            renderIds: uRenderIds,
+            offset: uOffset,
+            containerSize: uContainerSize,
+            gapSize: uGapSize!,
+            aaSize: uAaSize,
         },
     };
 
@@ -135,6 +157,10 @@ export function resizeGL(ctx: VoronoiContext) {
 
     gl.useProgram(ctx.program);
     gl.uniform2f(uniforms.resolution, viewport.width, viewport.height);
+    // Also likely want to update container size default if not manually overridden, 
+    // but typically render() is called with explicit size or we rely on the default which we might want to update here.
+    // For safety, let's update the default to screen size just in case.
+    gl.uniform2f(uniforms.containerSize, viewport.width, viewport.height);
 }
 
 // ============================================================
@@ -143,7 +169,15 @@ export function resizeGL(ctx: VoronoiContext) {
 
 const seedDataBuffer = new Float32Array(MAX_SEEDS * 4);
 
-export function render(ctx: VoronoiContext, tiles: Tile[], useClip: boolean = false): void {
+export function render(
+    ctx: VoronoiContext,
+    tiles: Tile[],
+    useClip: boolean = false,
+    offset: { x: number, y: number } = { x: 0, y: 0 },
+    containerSize: { w: number, h: number } = { w: viewport.width, h: viewport.height },
+    gapSize: number = 3.0,
+    aaSize: number = 1.5
+): void {
     const { gl, texture, vao, uniforms } = ctx;
 
     const count = Math.min(tiles.length, MAX_SEEDS);
@@ -153,14 +187,16 @@ export function render(ctx: VoronoiContext, tiles: Tile[], useClip: boolean = fa
 
     for (let i = 0; i < count; i++) {
         const tile = tiles[i];
-        const offset = i * 4;
+        const offsetIdx = i * 4;
 
-        seedDataBuffer[offset] = tile.pos.x;
-        seedDataBuffer[offset + 1] = tile.pos.y;
-        seedDataBuffer[offset + 2] = tile.size;
+        seedDataBuffer[offsetIdx] = tile.pos.x;
+        seedDataBuffer[offsetIdx + 1] = tile.pos.y;
+        seedDataBuffer[offsetIdx + 2] = tile.size;
         // PACKING: Integer part is ColorID, Fractional part (0.1) is Highlight flag
-        seedDataBuffer[offset + 3] = tile.colorID + (tile.isHighlighted ? 0.1 : 0.0);
+        seedDataBuffer[offsetIdx + 3] = tile.colorID + (tile.isHighlighted ? 0.1 : 0.0);
     }
+
+    gl.useProgram(ctx.program); // Ensure using visual program
 
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(
@@ -177,8 +213,73 @@ export function render(ctx: VoronoiContext, tiles: Tile[], useClip: boolean = fa
 
     gl.uniform1i(uniforms.seedCount, count);
     gl.uniform1i(uniforms.useClip, useClip ? 1 : 0);
+    gl.uniform1i(uniforms.renderIds, 0); // Ensure visual mode
+
+    // Set offset and size
+    gl.uniform2f(uniforms.offset, offset.x, offset.y);
+    gl.uniform2f(uniforms.containerSize, containerSize.w, containerSize.h);
+
+    if (gapSize !== 3.0) {
+        console.log("[MosaicDebug] render gapSize:", gapSize, "aaSize:", aaSize);
+    }
+    gl.uniform1f(uniforms.gapSize, gapSize);
+    gl.uniform1f(uniforms.aaSize, aaSize);
 
     gl.viewport(0, 0, viewport.width, viewport.height);
     gl.bindVertexArray(vao);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+export function renderIds(
+    ctx: VoronoiContext,
+    tiles: Tile[],
+    offset: { x: number, y: number } = { x: 0, y: 0 },
+    containerSize: { w: number, h: number } = { w: viewport.width, h: viewport.height },
+    gapSize: number = 3.0,
+    aaSize: number = 1.5
+): void {
+    const { gl, texture, vao, uniforms } = ctx;
+
+    const count = Math.min(tiles.length, MAX_SEEDS);
+
+    // Assume texture is populated or we populate it.
+    // Safety refill:
+    seedDataBuffer.fill(0);
+    for (let i = 0; i < count; i++) {
+        const tile = tiles[i];
+        const offsetIdx = i * 4;
+        seedDataBuffer[offsetIdx] = tile.pos.x;
+        seedDataBuffer[offsetIdx + 1] = tile.pos.y;
+        seedDataBuffer[offsetIdx + 2] = tile.size;
+        seedDataBuffer[offsetIdx + 3] = tile.colorID + (tile.isHighlighted ? 0.1 : 0.0);
+    }
+
+    gl.useProgram(ctx.program);
+    gl.bindVertexArray(vao); // Ensure VAO is bound
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA32F,
+        MAX_SEEDS,
+        1,
+        0,
+        gl.RGBA,
+        gl.FLOAT,
+        seedDataBuffer
+    );
+
+    gl.uniform1i(uniforms.seedCount, count);
+    gl.uniform1i(uniforms.renderIds, 1); // Enable ID mode
+    gl.uniform2f(uniforms.offset, offset.x, offset.y);
+    gl.uniform2f(uniforms.containerSize, containerSize.w, containerSize.h);
+    gl.uniform1f(uniforms.gapSize, gapSize);
+    gl.uniform1f(uniforms.aaSize, aaSize);
+
+    gl.viewport(0, 0, viewport.width, viewport.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // Reset
+    gl.uniform1i(uniforms.renderIds, 0);
 }

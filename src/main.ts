@@ -32,16 +32,33 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // ── Input routing ──────────────────────────────────────────
-window.addEventListener("mousedown", e => screens.onPointerDown(e.clientX, e.clientY, e));
-window.addEventListener("mousemove", e => screens.onPointerMove(e.clientX, e.clientY));
+// ── Input routing ──────────────────────────────────────────
+function getRelativeCoords(clientX: number, clientY: number) {
+    const rect = glCanvas.getBoundingClientRect();
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+    };
+}
+
+window.addEventListener("mousedown", e => {
+    const { x, y } = getRelativeCoords(e.clientX, e.clientY);
+    screens.onPointerDown(x, y, e);
+});
+window.addEventListener("mousemove", e => {
+    const { x, y } = getRelativeCoords(e.clientX, e.clientY);
+    screens.onPointerMove(x, y);
+});
 window.addEventListener("mouseup", () => screens.onPointerUp());
 
 window.addEventListener("touchstart", e => {
-    screens.onPointerDown(e.touches[0].clientX, e.touches[0].clientY, e);
+    const { x, y } = getRelativeCoords(e.touches[0].clientX, e.touches[0].clientY);
+    screens.onPointerDown(x, y, e);
 });
 window.addEventListener("touchmove", e => {
     e.preventDefault();
-    screens.onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+    const { x, y } = getRelativeCoords(e.touches[0].clientX, e.touches[0].clientY);
+    screens.onPointerMove(x, y);
 }, { passive: false });
 window.addEventListener("touchend", () => screens.onPointerUp());
 
