@@ -57,6 +57,32 @@ export class DrawScreen implements Screen {
             fileInput.onchange = (e) => this.handleImageUpload(e);
         }
 
+        const btnMerge = document.getElementById("btn-merge");
+        const txtMergeSrc = document.getElementById("merge-src") as HTMLInputElement;
+        const txtMergeDest = document.getElementById("merge-dest") as HTMLInputElement;
+
+        if (btnMerge && txtMergeSrc && txtMergeDest) {
+            btnMerge.onclick = () => {
+                const src = parseInt(txtMergeSrc.value);
+                const dest = parseInt(txtMergeDest.value);
+
+                if (isNaN(src) || isNaN(dest)) {
+                    alert("Please enter valid Source and Destination Color IDs.");
+                    return;
+                }
+
+                let count = 0;
+                this.tiles.forEach(tile => {
+                    if (tile.colorID === src) {
+                        tile.colorID = dest;
+                        count++;
+                    }
+                });
+
+                alert(`merged ${count} tiles from color #${src} to #${dest}`);
+            };
+        }
+
         if (btnExport && txtData && txtName) {
             btnExport.onclick = () => {
                 const name = txtName.value || "Untitled";
@@ -189,6 +215,20 @@ export class DrawScreen implements Screen {
         }
 
         if (!event || (event instanceof MouseEvent && event.button === 0)) {
+            // Shift+Click to delete
+            if (event instanceof MouseEvent && event.shiftKey) {
+                const tileIndex = this.tiles.findIndex(t => {
+                    const dx = t.pos.x - x;
+                    const dy = t.pos.y - y;
+                    return Math.sqrt(dx * dx + dy * dy) < t.size; // Simple hit test
+                });
+
+                if (tileIndex !== -1) {
+                    this.tiles.splice(tileIndex, 1);
+                    return; // Don't create a new tile
+                }
+            }
+
             // Check if we clicked on an existing tile? Maybe we want to select it?
             // For now, simple drawing: always add a new tile unless we are clearly dragging (processed above)
 

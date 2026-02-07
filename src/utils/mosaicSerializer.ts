@@ -8,7 +8,7 @@ export class MosaicSerializer {
 
     /**
      * Serializes a completed mosaic into a compressed string format.
-     * Format: "Name"|Hex-ID|Hex-ID...||ID,x,y|ID,x,y...
+     * Format: "Name"|Width|Height|Hex-ID|Hex-ID...||ID,x,y|ID,x,y...
      */
     static serialize(mosaic: CompletedMosaic): string {
         const usedColors = new Map<number, number>(); // Global ID -> Local ID
@@ -29,7 +29,7 @@ export class MosaicSerializer {
             }
         }
 
-        const headerParts = [mosaic.name, ...colorDefs];
+        const headerParts = [mosaic.name, Math.round(mosaic.width).toString(), Math.round(mosaic.height).toString(), ...colorDefs];
         const header = headerParts.join("|");
 
         // 2. Serialize tiles
@@ -68,11 +68,29 @@ export class MosaicSerializer {
             const headerParts = headerStr.split("|");
             const name = headerParts[0];
 
+            // Backward compatibility check or just strict format?
+            // Let's assume strict new format: Name|W|H|Colors...
+            // If the 2nd part contains # or is not a number, it might be old format?
+            // The user requested a refactor, so let's enforce new format or provide defaults.
+            let width = 1000;
+            let height = 1000;
+            let colorStartIndex = 1;
+
+            const w = parseInt(headerParts[1]);
+            const h = parseInt(headerParts[2]);
+
+            // Simple heuristic: if headerParts[1] is a number and NOT a hex color (doesn't start with #)
+            if (!isNaN(w) && !isNaN(h) && !headerParts[1].startsWith("#")) {
+                width = w;
+                height = h;
+                colorStartIndex = 3;
+            }
+
             // Parse color definitions: Hex-ID
             // Determine mapping: Local ID -> Global ID
             const localToGlobal = new Map<number, number>();
 
-            for (let i = 1; i < headerParts.length; i++) {
+            for (let i = colorStartIndex; i < headerParts.length; i++) {
                 const def = headerParts[i];
                 // format: #RRGGBB-ID or RRGGBB-ID
                 const lastDash = def.lastIndexOf("-");
@@ -121,7 +139,7 @@ export class MosaicSerializer {
                 }
             }
 
-            return new CompletedMosaic(name, tiles);
+            return new CompletedMosaic(name, width, height, tiles);
 
         } catch (e) {
             console.error("Failed to deserialize mosaic:", e);

@@ -1,6 +1,6 @@
 // components/GameTile.ts
 import { Tile } from "../types/tile";
-import {ColorNumber} from "../types/color";
+import { ColorNumber } from "../types/color";
 
 export class GameTile implements Tile {
     pos: { x: number; y: number };
@@ -41,5 +41,14 @@ export class GameTile implements Tile {
         const dx = this.pos.x - other.pos.x;
         const dy = this.pos.y - other.pos.y;
         return Math.sqrt(dx * dx + dy * dy);
+    }
+    clone(): Tile {
+        return new GameTile(
+            { ...this.pos },
+            { ...this.vel },
+            this.size,
+            this.colorID,
+            this.isHighlighted
+        );
     }
 }

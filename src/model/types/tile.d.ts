@@ -1,4 +1,4 @@
-import {ColorNumber} from "./color";
+import { ColorNumber } from "./color";
 
 export interface Tile {
 
@@ -21,4 +21,6 @@ export interface Tile {
      * @param other is the other tile
      */
     distance: (other: Tile) => number;
+
+    clone: () => Tile;
 }

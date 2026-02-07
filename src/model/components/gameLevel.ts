@@ -255,7 +255,7 @@ export class GameLevel implements Level {
 
     isGameWon(): boolean {
         for (const [colorID, count] of this.winTiles) {
-            if (!this.collectedTiles.has(colorID) || this.collectedTiles.get(colorID)! < count) {
+            if ((!this.collectedTiles.has(colorID) || this.collectedTiles.get(colorID)! < count) && count > 0) {
                 return false;
             }
         }
