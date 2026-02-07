@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport"
+          content="width=device-width,initial-scale=1.0,user-scalable=no"/>
+    <title>Mosaic Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            background: #0f0f23;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: system-ui, sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none
+        }
+
+        #hud {
+            display: flex;
+            gap: 28px;
+            margin-bottom: 10px;
+            color: #fff;
+            font-size: 13px
+        }
+
+        #hud .lbl {
+            opacity: .45;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        #hud .val {
+            font-size: 24px;
+            font-weight: 700
+        }
+
+        #score-val {
+            color: #f8c71a
+        }
+
+        #combo-val {
+            color: #2ecc70
+        }
+
+        #wrap {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            touch-action: none;
+            box-shadow: 0 0 36px rgba(0, 0, 0, .5);
+            border: 1px solid rgba(255, 255, 255, .07);
+
+        }
+
+        canvas {
+            display: block
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none
+        }
+
+        #msg {
+            position: absolute;
+            top: 38%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 26px;
+            font-weight: 800;
+            pointer-events: none;
+            text-shadow: 0 2px 18px rgba(0, 0, 0, .7);
+            opacity: 0
+        }
+
+        #msg.show {
+            animation: pop 1s ease-out forwards
+        }
+
+        #chain-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, .55);
+            color: #fff;
+            padding: 3px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 600;
+            display: none;
+            backdrop-filter: blur(3px)
+        }
+
+        #hint {
+            margin-top: 14px;
+            color: rgba(255, 255, 255, .35);
+            font-size: 11px;
+            text-align: center
+        }
+
+        @keyframes pop {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(.8)
+            }
+            70% {
+                opacity: 1;
+                transform: translate(-50%, -68%) scale(1.1)
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -85%) scale(1)
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="wrap">
+    <canvas id="gl"></canvas>
+    <canvas id="overlay"></canvas>
+    <div id="msg"></div>
+    <div id="chain-badge"></div>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
