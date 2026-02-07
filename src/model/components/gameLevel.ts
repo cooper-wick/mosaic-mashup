@@ -1,31 +1,68 @@
-import { Tile } from "../types/tile";
-import { Level } from "../types/level";
+import {Tile} from "../types/tile";
+import {GameTile} from "./gameTile";
+import {Level} from "../types/level";
+import {mb32} from "../../utils/random.ts";
+import {Mosaic} from "../types/mosaic";
+import {viewport} from "../../utils/viewport.ts";
+import {ColorNumber} from "../types/color";
 
 export class GameLevel implements Level {
-    randomSeed: number;
+    randomSeed?: number;
     tiles: Tile[] = [];
-    winTiles: Map<number, number> = new Map();
-    collectedTiles: Map<number, Tile> = new Map();
+    winTiles: Map<ColorNumber, number>;
+    collectedTiles: Map<ColorNumber, number> = new Map();
     selectedTiles: Tile[] = [];
 
+    private readonly random: () => number;
+    private accumulatedSize = 0;
+
     constructor(
-        randomSeed: number,
-        winTiles: Map<number, number>
+        completedMosaic: Mosaic,
+        randomSeed?: number
     ) {
-        this.randomSeed = randomSeed;
-        this.winTiles = winTiles;
+        this.winTiles = new Map(completedMosaic.getWinTiles());
+        this.random = randomSeed !== undefined ? mb32(randomSeed) : Math.random;
     }
 
-    isLevelFull(): boolean {
-        return false;
+
+    addTile(size: number): void {
+        // Step 1: pick a random color from winTiles keys
+        const colorIDs = Array.from(this.winTiles.keys());
+        if (colorIDs.length === 0) return; // safety check
+
+        // Generate a random index based on the number of colors
+        const rand = this.random(); // 0 is just a dummy argument; mb32 ignores it
+        const colorIndex = Math.floor(rand * colorIDs.length);
+        const colorID = colorIDs[colorIndex];
+
+        // Random x position along the top of the viewport
+        const randX = Math.floor(this.random() * viewport.width);
+
+        // Step 2: create the tile
+        const tile = new GameTile(
+            {x: randX, y: -viewport.height},
+            {x: 0, y: 0},
+            size,
+            colorID
+        );
+
+        // Step 3: add tile to the level
+        this.tiles.push(tile);
     }
 
-    addTile(): {} {
-        return {};
-    }
+    fillLevel(): void {
+        const minSize = viewport.width/20; // 5% of viewport width
+        const maxSize = viewport.width/10; // 10% of viewport width
 
-    fillLevel(): {} {
-        return {};
+        while (this.accumulatedSize >= minSize) {
+            // Random tile size between 40 and 80
+            const randSize = Math.floor(this.random() * (maxSize - minSize + 1)) + minSize;
+
+            // Call addTile to create the tile of this size
+            this.addTile(randSize);
+
+            this.accumulatedSize -= randSize;
+        }
     }
 
     isAdjacentTiles(tile1: Tile, tile2: Tile): boolean {
@@ -62,8 +99,8 @@ export class GameLevel implements Level {
             return;
         }
 
-        // Wrong color should be ignored
-        if (!prev.isSameColor(curr)) {
+        // Wrong color and non-adjacent tiles should be ignored
+        if (!prev.isSameColor(curr) || !this.isAdjacentTiles(prev, curr)) {
             return;
         }
 
@@ -105,21 +142,29 @@ export class GameLevel implements Level {
                     this.tiles.splice(index, 1);
                 }
 
-                this.collectedTiles.set(
-                    this.collectedTiles.size,
-                    tile
-                );
+                // Sum up the sizes for refill
+                this.accumulatedSize += tile.size;
+
+                // Increment collectedTiles count for this color
+                const prevCount = this.collectedTiles.get(tile.colorID) ?? 0;
+                this.collectedTiles.set(tile.colorID, prevCount + 1);
             }
 
             this.selectedTiles = [];
 
-            // Refill will be handled later
+            // Refill using the total size of removed tiles
             this.fillLevel();
         }
     }
 
 
     isGameWon(): boolean {
-        return false;
+        for (const [colorID, count] of this.winTiles) {
+            if (!this.collectedTiles.has(colorID) || this.collectedTiles.get(colorID)! < count) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

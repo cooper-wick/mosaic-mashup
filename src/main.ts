@@ -1,10 +1,12 @@
 import './style.css'
 import { stepTiles } from "./physics.ts";
-import { generateLevel } from "./utils/levelGen.ts";
 import { initGL, render, resizeGL } from "./shaders/rendering.ts";
 import { updateViewportSize, viewport } from "./utils/viewport.ts";
 import { tileAt } from "./gameLogic.ts";
 import { GameLevel } from "./model/components/gameLevel.ts";
+import { PALETTE } from "./utils/constants.ts";
+import {generateLevel} from "./utils/levelGen.ts";
+import {CompletedMosaic} from "./model/components/completedMosaic.ts";
 
 
 const glCanvas = document.getElementById("gl") as HTMLCanvasElement;
@@ -18,9 +20,40 @@ olCanvas.width = viewport.width;
 olCanvas.height = viewport.height;
 
 // Initialize balls
-const startLevel = new GameLevel(Date.now(), new Map());
-startLevel.tiles = generateLevel();
-let level = startLevel;
+
+const tiles = generateLevel(0);
+const completedMosaic = new CompletedMosaic("test", tiles);
+const level = new GameLevel(completedMosaic);
+level.tiles = tiles;
+
+function updateRequirementDisplay() {
+    const container = document.getElementById("tile-requirements");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    for (const [colorID, required] of level.winTiles.entries()) {
+        console.log(level.collectedTiles)
+        const collected = level.collectedTiles.get(colorID) || 0;
+
+        const remaining = required - collected;
+        const el = document.createElement("div");
+        el.className = "tile-count";
+
+        const dot = document.createElement("div");
+        dot.className = "tile-dot";
+        dot.style.backgroundColor = PALETTE[colorID].css;
+
+        const text = document.createElement("span");
+        text.textContent = remaining > 0 ? remaining.toString() : "✓";
+
+        el.appendChild(dot);
+        el.appendChild(text);
+        container.appendChild(el);
+    }
+}
+
+updateRequirementDisplay();
 
 let isDragging = false;
 
@@ -30,10 +63,20 @@ function animate() {
     // Clear the canvas (prevents "trails" from forming)
     olCtx.clearRect(0, 0, viewport.width, viewport.height);
 
+    // console.log(level.tiles.reduce((acc, tile) => acc + tile.size, 0));
+
+    // console.log(level.isGameWon())
+    // if (level.isGameWon()) {
+    //     olCtx.fillStyle = "rgba(0, 0, 0, 1)";
+    //     // level.tiles.forEach((tile, i) => {
+    //     //     tile.pos.y += 1; // Move upwards
+    //     // })
+    // } else {
+        stepTiles(level.tiles, viewport.width, viewport.height);
+    // }
 
     render(glCtx, level.tiles);
 
-    stepTiles(level.tiles, viewport.width, viewport.height);
 
     // Request the next frame
     requestAnimationFrame(animate);
@@ -82,6 +125,7 @@ if (olCanvas && olCtx) {
         if (isDragging) {
             isDragging = false;
             level.finalizeConnection();
+            updateRequirementDisplay();
         }
     };
 

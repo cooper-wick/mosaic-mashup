@@ -1,13 +1,16 @@
 import { Tile } from "../model/types/tile";
 import { GameTile } from "../model/components/gameTile";
 import { NUM_COLORS } from "./constants.ts";
+import {mb32} from "./random.ts";
+import {ColorNumber} from "../model/types/color";
 
 const PADDING = 2;       // Spacing between balls
 const START_R = 95;      // Start with huge balls
 const END_R = 35;        // Keep going until we are placing tiny balls
 const FAIL_LIMIT = 50;  // How many times to fail before we shrink the size
 
-export function generateLevel(): Tile[] {
+export function generateLevel(seed?: number): Tile[] {
+    const random = seed !== undefined ? mb32(seed) : Math.random;
     const tiles: Tile[] = [];
 
     let currentMaxR = START_R;
@@ -15,15 +18,15 @@ export function generateLevel(): Tile[] {
 
     while (currentMaxR >= END_R) {
 
-        const radius = currentMaxR * (0.8 + Math.random() * 0.2);
+        const radius = currentMaxR * (0.8 + random() * 0.2);
 
         if (radius < END_R) break;
 
         const doubleHeight = window.innerHeight * 2;
 
         // Random Position
-        const x = Math.random() * (window.innerWidth - radius * 2) + radius;
-        const y = Math.random() * ((doubleHeight) - radius * 2) + radius;
+        const x = random() * (window.innerWidth - radius * 2) + radius;
+        const y = random() * ((doubleHeight) - radius * 2) + radius;
 
         // Check Overlaps
         let overlapping = false;
@@ -53,18 +56,15 @@ export function generateLevel(): Tile[] {
                 { x, y },
                 { x: 0, y: 0 },
                 radius,
-                Math.floor(Math.random() * NUM_COLORS),
-                radius
+                Math.floor(random() * NUM_COLORS) as ColorNumber
             ));
 
             // Reset failure count because we successfully placed one
             failures = 0;
         } else {
-            // Failure! We hit another ball.
+            // Failure! We hit another tile.
             failures++;
 
-            // If we fail too many times in a row, it means the screen is
-            // full of balls at this size. It's time to shrink!
             if (failures > FAIL_LIMIT) {
                 currentMaxR *= 0.95; // Shrink our target size by 5%
                 failures = 0;        // Reset counter for the new smaller size

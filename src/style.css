@@ -61,3 +61,33 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+#tile-requirements {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px 20px;
+    border-radius: 20px;
+    pointer-events: none; /* Let clicks pass through */
+    color: white;
+    font-family: sans-serif;
+    font-weight: bold;
+    z-index: 100;
+}
+
+.tile-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tile-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid white;
+}

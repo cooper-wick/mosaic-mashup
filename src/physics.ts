@@ -52,17 +52,13 @@ export function stepTiles(tiles: Tile[], W: number, H: number): void {
                 const nx = dx / dist;
                 const ny = dy / dist;
 
-                // 1. Position Correction (The most important part for stacking)
-                // We physically push the balls apart so they don't overlap
+                // Position Correction (The most important part for stacking)
                 const overlap = minDist - dist;
-                const totalMass = (a.weight || 1) + (b.weight || 1);
-                const rA = (b.weight || 1) / totalMass; // Ratio for A
-                const rB = (a.weight || 1) / totalMass; // Ratio for B
 
-                a.pos.x -= nx * overlap * rA;
-                a.pos.y -= ny * overlap * rA;
-                b.pos.x += nx * overlap * rB;
-                b.pos.y += ny * overlap * rB;
+                a.pos.x -= nx * overlap;
+                a.pos.y -= ny * overlap;
+                b.pos.x += nx * overlap;
+                b.pos.y += ny * overlap;
 
                 // 2. Velocity Resolution (Bounce and Friction)
                 const relVelX = b.vel.x - a.vel.x;
@@ -79,10 +75,10 @@ export function stepTiles(tiles: Tile[], W: number, H: number): void {
                     const impulseX = j * nx;
                     const impulseY = j * ny;
 
-                    a.vel.x -= impulseX * rA;
-                    a.vel.y -= impulseY * rA;
-                    b.vel.x += impulseX * rB;
-                    b.vel.y += impulseY * rB;
+                    a.vel.x -= impulseX;
+                    a.vel.y -= impulseY;
+                    b.vel.x += impulseX;
+                    b.vel.y += impulseY;
 
                     // Calculate Friction (Tangential force)
                     // This stops balls from sliding off the top of the stack
@@ -93,10 +89,10 @@ export function stepTiles(tiles: Tile[], W: number, H: number): void {
                     // Apply friction impulse against the tangent
                     const frictionImpulse = velAlongTangent * (1 - FRICTION);
 
-                    a.vel.x += tx * frictionImpulse * rA;
-                    a.vel.y += ty * frictionImpulse * rA;
-                    b.vel.x -= tx * frictionImpulse * rB;
-                    b.vel.y -= ty * frictionImpulse * rB;
+                    a.vel.x += tx * frictionImpulse;
+                    a.vel.y += ty * frictionImpulse;
+                    b.vel.x -= tx * frictionImpulse;
+                    b.vel.y -= ty * frictionImpulse;
                 }
             }
         }
@@ -127,10 +123,10 @@ export function stepTiles(tiles: Tile[], W: number, H: number): void {
             }
 
             // Ceiling safety check (prevents balls escaping up)
-            if (tile.pos.y < -500) {
-                tile.pos.y = -500;
-                tile.vel.y = 0;
-            }
+            // if (tile.pos.y < -500) {
+            //     tile.pos.y = -500;
+            //     tile.vel.y = 0;
+            // }
         }
     }
 }

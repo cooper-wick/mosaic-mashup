@@ -1,27 +1,25 @@
 // components/GameTile.ts
 import { Tile } from "../types/tile";
+import {ColorNumber} from "../types/color";
 
 export class GameTile implements Tile {
     pos: { x: number; y: number };
     vel: { x: number; y: number };
     size: number;
-    colorID: number;
-    weight: number;
+    colorID: ColorNumber;
     isHighlighted: boolean;
 
     constructor(
         pos: { x: number; y: number },
         vel: { x: number; y: number },
         size: number,
-        colorID: number,
-        weight: number,
+        colorID: ColorNumber,
         isHighlighted: boolean = false
     ) {
         this.pos = pos;
         this.vel = vel;
         this.size = size;
         this.colorID = colorID;
-        this.weight = weight;
         this.isHighlighted = isHighlighted;
     }
 

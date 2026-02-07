@@ -1,22 +1,19 @@
+import {Mosaic} from "./mosaic";
+
 export interface Level {
-    randomSeed: number;
+    randomSeed?: number;
     tiles: Tile[];
-    winTiles: Map<number, number>;
+    winTiles: Map<ColorNumber, number>;
     collectedTiles: Map<number, Tile>;
     selectedTiles: Tile[];
 
     /**
-     * Determines if the entire screen is full of tiles.
+     * Generates a new tile using randomSeed of the given size, and adds it into the level.
      */
-    isLevelFull: () => boolean;
+    addTile: (size: number) => void;
 
     /**
-     * Generates a new tile using randomSeed, and adds it into the level.
-     */
-    addTile: () => void;
-
-    /**
-     * While level is not full, generates new tiles and adds them into the level.
+     * Generates tiles with total weight == @totalSize.
      */
     fillLevel: () => void;
 

@@ -1,10 +1,11 @@
+import {ColorNumber} from "./color";
+
 export interface Tile {
 
     pos: { x: number; y: number };
     vel: { x: number, y: number };
     size: number;
-    colorID: number;
-    weight: number;
+    colorID: ColorNumber;
     isHighlighted: boolean;
 
     /**
