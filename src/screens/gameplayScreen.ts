@@ -274,17 +274,14 @@ export class GameplayScreen implements Screen {
                 e.stopPropagation(); // prevent game click
                 this.animatePile(colorID);
                 bucket.setInteractive(false);
-                // After clicking, maybe we show checkmark or empty state?
-                // For now, let's just make it non-interactive.
-                // The animation will fill the mosaic.
-                // Maybe update bucket to 0?
-                bucket.update(0); // "0 remaining" or just empty?
-                // Actually, if we update(0), it shows "0/Target".
-                // If we want to hide it, we can.
-                // Let's leave it as is for now.
+                // After clicking, show checkmark
+                // We use count because in MosaicBucket logic, if current >= target, it shows checkmark.
+                // count is the target for this level.
+                bucket.update(count);
             };
-        }
+        };
     }
+
 
     private setupRevealImages(targetTiles: Tile[]) {
         // Calculate the actual bounding box of the tiles
@@ -539,7 +536,7 @@ export class GameplayScreen implements Screen {
                 ctx.shadowBlur = 6;
 
                 // Position above buckets
-                ctx.fillText('Tap a bucket to fill the mosaic', viewport.width / 2, viewport.height - 140);
+                ctx.fillText('Tap circles below to fill the mosaic', viewport.width / 2, viewport.height - 140);
                 ctx.restore();
             }
         }

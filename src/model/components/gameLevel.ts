@@ -56,14 +56,40 @@ export class GameLevel implements Level {
 
 
     addTile(size: number, x?: number, y?: number): void {
-        // Step 1: pick a random color from winTiles keys
+        // Step 1: pick a random weighted color from winTiles keys
         const colorIDs = Array.from(this.winTiles.keys());
         if (colorIDs.length === 0) return; // safety check
 
-        // Generate a random index based on the number of colors
-        const rand = this.random(); // 0 is just a dummy argument; mb32 ignores it
-        const colorIndex = Math.floor(rand * colorIDs.length);
-        const colorID = colorIDs[colorIndex];
+        // Calculate total weight based on needed vs completed colors
+        const NEEDED_WEIGHT = 3;
+        const COMPLETED_WEIGHT = 1;
+
+        let totalWeight = 0;
+        const weights = colorIDs.map(id => {
+            const required = this.winTiles.get(id) || 0;
+            const collected = this.collectedTiles.get(id) || 0;
+            // Higher weight if we still need this color
+            const weight = (collected < required) ? NEEDED_WEIGHT : COMPLETED_WEIGHT;
+            totalWeight += weight;
+            return weight;
+        });
+
+        // Random selection based on weights
+        let randomValue = this.random() * totalWeight;
+        let selectedColorIndex = -1;
+
+        for (let i = 0; i < weights.length; i++) {
+            randomValue -= weights[i];
+            if (randomValue < 0) {
+                selectedColorIndex = i;
+                break;
+            }
+        }
+
+        // Fallback in case of rounding errors
+        if (selectedColorIndex === -1) selectedColorIndex = weights.length - 1;
+
+        const colorID = colorIDs[selectedColorIndex];
 
         // Random x position along the top of the viewport
         const randX = Math.floor(this.random() * viewport.width);
