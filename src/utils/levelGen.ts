@@ -1,38 +1,41 @@
 import { Tile } from "../model/types/tile";
 import { GameTile } from "../model/components/gameTile";
-import { NUM_COLORS } from "./constants.ts";
-import {mb32} from "./random.ts";
-import {ColorNumber} from "../model/types/color";
+import { palette } from "./constants.ts";
+import { mb32 } from "./random.ts";
+import { ColorNumber } from "../model/types/color";
+import { TileGenerator } from "../model/logic/TileGenerator";
+import { viewport } from "./viewport.ts";
 
 const PADDING = 2;       // Spacing between balls
-const START_R = 95;      // Start with huge balls
-const END_R = 35;        // Keep going until we are placing tiny balls
-const FAIL_LIMIT = 50;  // How many times to fail before we shrink the size
+const MAX_FAILURES = 1000;  // How many times to try placing a tile before giving up
 
 export function generateLevel(seed?: number): Tile[] {
     const random = seed !== undefined ? mb32(seed) : Math.random;
     const tiles: Tile[] = [];
 
-    let currentMaxR = START_R;
+    let currentArea = 0;
+    const targetArea = TileGenerator.getTargetDensity();
     let failures = 0;
 
-    while (currentMaxR >= END_R) {
+    // Use a safety break to prevent infinite loops
+    let attempts = 0;
+    const MAX_ATTEMPTS = 10000;
 
-        const radius = currentMaxR * (0.8 + random() * 0.2);
+    while (currentArea < targetArea && failures < MAX_FAILURES && attempts < MAX_ATTEMPTS) {
+        attempts++;
 
-        if (radius < END_R) break;
-
-        const doubleHeight = window.innerHeight * 2;
+        const radius = TileGenerator.getRandomRadius(random);
+        const doubleHeight = viewport.height * 2;
 
         // Random Position
-        const x = random() * (window.innerWidth - radius * 2) + radius;
+        const x = random() * (viewport.width - radius * 2) + radius;
         const y = random() * ((doubleHeight) - radius * 2) + radius;
 
         // Check Overlaps
         let overlapping = false;
 
         // Safety check: Don't spawn inside walls if window is small
-        if (x < radius || x > window.innerWidth - radius || y < radius || y > doubleHeight - radius) {
+        if (x < radius || x > viewport.width - radius || y < radius || y > doubleHeight - radius) {
             overlapping = true;
         } else {
             for (const existing of tiles) {
@@ -56,19 +59,15 @@ export function generateLevel(seed?: number): Tile[] {
                 { x, y },
                 { x: 0, y: 0 },
                 radius,
-                Math.floor(random() * NUM_COLORS) as ColorNumber
+                Math.floor(random() * palette.length) as ColorNumber
             ));
 
+            currentArea += Math.PI * radius * radius;
             // Reset failure count because we successfully placed one
             failures = 0;
         } else {
             // Failure! We hit another tile.
             failures++;
-
-            if (failures > FAIL_LIMIT) {
-                currentMaxR *= 0.95; // Shrink our target size by 5%
-                failures = 0;        // Reset counter for the new smaller size
-            }
         }
     }
 

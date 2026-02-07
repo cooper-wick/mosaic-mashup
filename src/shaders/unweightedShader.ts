@@ -1,4 +1,4 @@
-import {MAX_SEEDS, NUM_COLORS} from "../utils/constants.ts";
+import { MAX_SEEDS, MAX_PALETTE_SIZE } from "../utils/constants.ts";
 
 export const UNWEIGHTED_FRAGMENT_SHADER_SOURCE = `#version 300 es
 precision highp float;
@@ -7,7 +7,8 @@ precision highp float;
 uniform sampler2D u_seedTexture;    // Texture: [x, y, radius, colorIndex + highlightFlag]
 uniform int       u_seedCount;      // Number of active tiles
 uniform vec2      u_resolution;     // Canvas resolution
-uniform vec3      u_palette[${NUM_COLORS}]; // Color palette array
+uniform vec3      u_palette[${MAX_PALETTE_SIZE}]; // Color palette array (fixed max size)
+uniform int       u_paletteSize;    // Actual number of colors in palette
 
 // Constants
 const float GAP_SIZE = 3.0; // The width of the gap between tiles
@@ -49,7 +50,8 @@ void main() {
     vec4 closestSeed = texelFetch(u_seedTexture, ivec2(closestIndex, 0), 0);
     
     float rawValue = closestSeed.w;
-    int colorIndex = clamp(int(floor(rawValue)), 0, ${NUM_COLORS - 1});
+    // Clamp to actual palette size for graceful fallback on invalid colorIDs
+    int colorIndex = clamp(int(floor(rawValue)), 0, max(u_paletteSize - 1, 0));
     float highlightFactor = step(0.05, fract(rawValue)); 
     // float highlightFactor = 0.0; 
 
@@ -82,3 +84,4 @@ void main() {
 
     outColor = vec4(baseColor, 1.0);
 }`;
+

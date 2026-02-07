@@ -1,7 +1,7 @@
 import type { Tile } from "../model/types/tile";
-import { NUM_COLORS, MAX_SEEDS, PALETTE } from "../utils/constants";
+import { MAX_SEEDS, MAX_PALETTE_SIZE, palette } from "../utils/constants";
 import { viewport } from "../utils/viewport";
-import {UNWEIGHTED_FRAGMENT_SHADER_SOURCE} from "./unweightedShader.ts";
+import { UNWEIGHTED_FRAGMENT_SHADER_SOURCE } from "./unweightedShader.ts";
 // import {WEIGHTED_FRAGMENT_SHADER_SOURCE} from "./weightedShader.ts";
 
 // ============================================================
@@ -27,6 +27,8 @@ export interface VoronoiContext {
     uniforms: {
         seedCount: WebGLUniformLocation;
         resolution: WebGLUniformLocation;
+        useClip: WebGLUniformLocation;
+        paletteSize: WebGLUniformLocation;
     };
 }
 
@@ -45,7 +47,7 @@ export function initGL(canvas: HTMLCanvasElement): VoronoiContext {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
 
-    const gl = canvas.getContext("webgl2", { antialias: false });
+    const gl = canvas.getContext("webgl2", { antialias: false, alpha: true });
     if (!gl) throw new Error("WebGL2 not supported");
 
     const program = gl.createProgram()!;
@@ -74,20 +76,26 @@ export function initGL(canvas: HTMLCanvasElement): VoronoiContext {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    // Get Locations
+    // Get uniform locations
     const uResolution = gl.getUniformLocation(program, "u_resolution")!;
     const uSeedCount = gl.getUniformLocation(program, "u_seedCount")!;
+    const uUseClip = gl.getUniformLocation(program, "u_useClip")!;
+    const uPaletteSize = gl.getUniformLocation(program, "u_paletteSize")!;
 
-    // *** FIX: Previously these were swapped and using wrong types ***
+    // Set initial uniform values
     gl.uniform1i(gl.getUniformLocation(program, "u_seedTexture"), 0);
     gl.uniform2f(uResolution, viewport.width, viewport.height);
     gl.uniform1i(uSeedCount, 0);
+    gl.uniform1i(uUseClip, 0);
 
-    for (let i = 0; i < NUM_COLORS; i++) {
-        gl.uniform3fv(gl.getUniformLocation(program, `u_palette[${i}]`), PALETTE[i].gl);
+    // Initialize palette uniforms
+    gl.uniform1i(uPaletteSize, palette.length);
+    for (let i = 0; i < MAX_PALETTE_SIZE; i++) {
+        const color = palette.getColor(i);
+        gl.uniform3fv(gl.getUniformLocation(program, `u_palette[${i}]`), color.gl);
     }
 
-    return {
+    const ctx: VoronoiContext = {
         gl,
         program,
         texture,
@@ -95,8 +103,29 @@ export function initGL(canvas: HTMLCanvasElement): VoronoiContext {
         uniforms: {
             seedCount: uSeedCount,
             resolution: uResolution,
+            useClip: uUseClip,
+            paletteSize: uPaletteSize,
         },
     };
+
+    // Subscribe to palette changes to update GPU uniforms automatically
+    palette.onChange(() => updatePalette(ctx));
+
+    return ctx;
+}
+
+/**
+ * Update the GPU palette uniforms when the palette changes.
+ */
+export function updatePalette(ctx: VoronoiContext): void {
+    const { gl, program, uniforms } = ctx;
+    gl.useProgram(program);
+    gl.uniform1i(uniforms.paletteSize, palette.length);
+
+    for (let i = 0; i < MAX_PALETTE_SIZE; i++) {
+        const color = palette.getColor(i);
+        gl.uniform3fv(gl.getUniformLocation(program, `u_palette[${i}]`), color.gl);
+    }
 }
 
 export function resizeGL(ctx: VoronoiContext) {
@@ -115,7 +144,7 @@ export function resizeGL(ctx: VoronoiContext) {
 
 const seedDataBuffer = new Float32Array(MAX_SEEDS * 4);
 
-export function render(ctx: VoronoiContext, tiles: Tile[]): void {
+export function render(ctx: VoronoiContext, tiles: Tile[], useClip: boolean = false): void {
     const { gl, texture, vao, uniforms } = ctx;
 
     const count = Math.min(tiles.length, MAX_SEEDS);
@@ -127,7 +156,7 @@ export function render(ctx: VoronoiContext, tiles: Tile[]): void {
         const tile = tiles[i];
         const offset = i * 4;
 
-        seedDataBuffer[offset]     = tile.pos.x;
+        seedDataBuffer[offset] = tile.pos.x;
         seedDataBuffer[offset + 1] = tile.pos.y;
         seedDataBuffer[offset + 2] = tile.size;
         // PACKING: Integer part is ColorID, Fractional part (0.1) is Highlight flag
@@ -148,6 +177,7 @@ export function render(ctx: VoronoiContext, tiles: Tile[]): void {
     );
 
     gl.uniform1i(uniforms.seedCount, count);
+    gl.uniform1i(uniforms.useClip, useClip ? 1 : 0);
 
     gl.viewport(0, 0, viewport.width, viewport.height);
     gl.bindVertexArray(vao);

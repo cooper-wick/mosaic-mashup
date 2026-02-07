@@ -44,9 +44,11 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -57,37 +59,80 @@ button:focus-visible {
     color: #213547;
     background-color: #ffffff;
   }
+
   button {
     background-color: #f9f9f9;
   }
 }
 
 #tile-requirements {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 15px;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 10px 20px;
-    border-radius: 20px;
-    pointer-events: none; /* Let clicks pass through */
-    color: white;
-    font-family: sans-serif;
-    font-weight: bold;
-    z-index: 100;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 15px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 10px 20px;
+  border-radius: 20px;
+  pointer-events: none;
+  /* Let clicks pass through */
+  color: white;
+  font-family: sans-serif;
+  font-weight: bold;
+  z-index: 100;
 }
 
 .tile-count {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .tile-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid white;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+#lobby {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+  z-index: 100;
+}
+
+#lobby h1 {
+  color: white;
+  font-size: 4rem;
+  margin-bottom: 20px;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+#draw-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 0;
+  /*transform: 0;*/
+  display: flex;
+  gap: 15px;
+  z-index: 100;
+}
+
+#background-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
 }

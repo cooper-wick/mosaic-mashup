@@ -7,6 +7,10 @@ export const viewport = {
 };
 
 export function updateViewportSize() {
-    viewport.width = window.innerWidth;
+    let width = window.innerWidth;
+    if (document.body.classList.contains("draw-mode-active")) {
+        width -= 240;
+    }
+    viewport.width = width;
     viewport.height = window.innerHeight;
 }

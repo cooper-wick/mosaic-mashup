@@ -7,7 +7,7 @@ export interface Screen {
     exit(): void;
     update(dt: number): void;
     render(): void;
-    onPointerDown?(x: number, y: number): void;
+    onPointerDown?(x: number, y: number, event?: MouseEvent | TouchEvent): void;
     onPointerMove?(x: number, y: number): void;
     onPointerUp?(): void;
     onResize?(): void;

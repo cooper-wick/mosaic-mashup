@@ -1,4 +1,4 @@
-import {Mosaic} from "./mosaic";
+import { Mosaic } from "./mosaic";
 
 export interface Level {
     randomSeed?: number;
@@ -13,9 +13,14 @@ export interface Level {
     addTile: (size: number) => void;
 
     /**
-     * Generates tiles with total weight == @totalSize.
+     * Generates tiles to fill the level for the first time.
      */
-    fillLevel: () => void;
+    populateLevel: () => void;
+
+    /**
+     * Replenishes tiles after some have been removed.
+     */
+    refillLevel: () => void;
 
     /**
      * Determines if the given tiles are adjacent.
