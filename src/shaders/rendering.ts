@@ -2,7 +2,6 @@ import type { Tile } from "../model/types/tile";
 import { MAX_SEEDS, MAX_PALETTE_SIZE, palette } from "../utils/constants";
 import { viewport } from "../utils/viewport";
 import { UNWEIGHTED_FRAGMENT_SHADER_SOURCE } from "./unweightedShader.ts";
-// import {WEIGHTED_FRAGMENT_SHADER_SOURCE} from "./weightedShader.ts";
 
 // ============================================================
 // SHADERS

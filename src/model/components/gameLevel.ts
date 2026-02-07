@@ -6,6 +6,7 @@ import { Mosaic } from "../types/mosaic";
 import { viewport } from "../../utils/viewport.ts";
 import { ColorNumber } from "../types/color";
 import { TileGenerator } from "../logic/TileGenerator";
+import { addDistinctColor } from "../../utils/colorUtils.ts";
 
 export class GameLevel implements Level {
     randomSeed?: number;
@@ -28,6 +29,23 @@ export class GameLevel implements Level {
         this.completedMosaic = completedMosaic;
         this.winTiles = new Map(completedMosaic.getWinTiles());
         this.random = randomSeed !== undefined ? mb32(randomSeed) : Math.random;
+
+        // Ensure at least 5 colors for variety
+        // If < 5, add extra distinct colors with requirement 0
+        const MIN_COLORS = 5;
+        // We only care about colors present in winTiles, which are the ones used in the level
+        const currentColors = Array.from(this.winTiles.keys());
+
+        while (currentColors.length < MIN_COLORS) {
+            const newColor = addDistinctColor(currentColors, this.random);
+            if (newColor !== null && !this.winTiles.has(newColor)) {
+                this.winTiles.set(newColor, 0); // 0 required, but available to pick
+                currentColors.push(newColor);
+            } else {
+                // If we can't add more (palette full), break to avoid infinite loop
+                break;
+            }
+        }
 
         // Initial population
         this.populateLevel();
