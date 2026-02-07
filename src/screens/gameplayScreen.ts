@@ -350,7 +350,7 @@ export class GameplayScreen implements Screen {
 
         const scaledGap = 0.1;
         const scaledAa = scaledGap * 0.1;
-        render(this.glCtx, captureTiles, false, { x: 0, y: 0 }, { w: width, h: height }, scaledGap, scaledAa);
+        render(this.glCtx, captureTiles, { x: 0, y: 0 }, { w: width, h: height }, scaledGap, scaledAa);
         const visualData = new Uint8Array(width * height * 4);
         gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, visualData);
 
@@ -480,7 +480,7 @@ export class GameplayScreen implements Screen {
             this.state === GameState.SLIDING_OUT) {
 
             const offset = { x: 0, y: this.containerY };
-            render(this.glCtx, this.level.tiles, false, offset);
+            render(this.glCtx, this.level.tiles, offset);
 
         } else if (this.state === GameState.WAITING_PILES || this.state === GameState.ANIMATING || this.state === GameState.DONE) {
 
@@ -610,7 +610,7 @@ export class GameplayScreen implements Screen {
         this.isDragging = false;
 
         if (this.level.selectedTiles.length > 1) {
-            render(this.glCtx, this.level.tiles, false, { x: 0, y: this.containerY });
+            render(this.glCtx, this.level.tiles, { x: 0, y: this.containerY });
             this.spawnConnectionAnimations();
         }
 

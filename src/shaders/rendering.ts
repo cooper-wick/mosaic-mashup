@@ -26,7 +26,7 @@ export interface VoronoiContext {
     uniforms: {
         seedCount: WebGLUniformLocation;
         resolution: WebGLUniformLocation;
-        useClip: WebGLUniformLocation;
+        // useClip: WebGLUniformLocation; // Removed
         paletteSize: WebGLUniformLocation;
         renderIds: WebGLUniformLocation;
         offset: WebGLUniformLocation;
@@ -81,23 +81,48 @@ export function initGL(canvas: HTMLCanvasElement): VoronoiContext {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
     // Get uniform locations
-    const uResolution = gl.getUniformLocation(program, "u_resolution")!;
-    const uSeedCount = gl.getUniformLocation(program, "u_seedCount")!;
-    const uUseClip = gl.getUniformLocation(program, "u_useClip")!;
-    const uPaletteSize = gl.getUniformLocation(program, "u_paletteSize")!;
-    const uRenderIds = gl.getUniformLocation(program, "u_renderIds")!;
-    const uOffset = gl.getUniformLocation(program, "u_offset")!;
-    const uContainerSize = gl.getUniformLocation(program, "u_containerSize")!;
-    const uGapSize = gl.getUniformLocation(program, "u_gapSize")!;
-    const uAaSize = gl.getUniformLocation(program, "u_aaSize")!;
+    const uResolution = gl.getUniformLocation(program, "u_res")!;
+    const uSeedCount = gl.getUniformLocation(program, "u_sc")!;
+    // const uUseClip = gl.getUniformLocation(program, "u_uc")!; // removed or unused? Let's check Usage
+    // Wait, useClip was not in my minified shader?! I might have missed it. 
+    // Let me check my minified shader... 
+    // I see u_st, u_sc, u_res, u_pal, u_ps, u_rid, u_off, u_cs, u_gs, u_aa
+    // I missed u_useClip!
 
-    console.log("[MosaicDebug] initGL called. uGapSize location:", uGapSize);
+    // Ah, wait. Looking at original shader source: `uniform int u_renderIds;`
+    // Looking at my minified shader: `uniform int u_rid;`
+    // I removed `u_useClip` from the minified shader!
+    // Why? It wasn't in the original shader source I read either?
+    // Let me check Step 32:
+    // "uniform int       u_seedCount;"
+    // ...
+    // "uniform int       u_renderIds;"
+    // I don't see `u_useClip` in the original shader source either!
+    // But `rendering.ts` had: `const uUseClip = gl.getUniformLocation(program, "u_useClip")!;` IN `initGL`
+    // And `gl.uniform1i(uUseClip, 0);`
+
+    // So the GL code was binding a uniform that didn't exist in the shader code provided in Step 32.
+    // If it didn't exist, getUniformLocation returns null, which is fine unless we force ! (which we did).
+    // Wait, `gl.getUniformLocation(program, "u_useClip")!` suggests it WAS expected.
+    // However, the shader source in Step 32 clearly does NOT have `u_useClip`.
+    // Maybe it was unused?
+
+    // I will proceed with removing uUseClip from here too then.
+
+    const uPaletteSize = gl.getUniformLocation(program, "u_ps")!;
+    const uRenderIds = gl.getUniformLocation(program, "u_rid")!;
+    const uOffset = gl.getUniformLocation(program, "u_off")!;
+    const uContainerSize = gl.getUniformLocation(program, "u_cs")!;
+    const uGapSize = gl.getUniformLocation(program, "u_gs")!;
+    const uAaSize = gl.getUniformLocation(program, "u_aa")!;
+
+
 
     // Set initial uniform values
-    gl.uniform1i(gl.getUniformLocation(program, "u_seedTexture"), 0);
+    gl.uniform1i(gl.getUniformLocation(program, "u_st"), 0);
     gl.uniform2f(uResolution, viewport.width, viewport.height);
     gl.uniform1i(uSeedCount, 0);
-    gl.uniform1i(uUseClip, 0);
+    // gl.uniform1i(uUseClip, 0); // Removed
     gl.uniform1i(uRenderIds, 0);
     gl.uniform2f(uOffset, 0, 0);
     gl.uniform2f(uContainerSize, viewport.width, viewport.height);
@@ -108,7 +133,7 @@ export function initGL(canvas: HTMLCanvasElement): VoronoiContext {
     gl.uniform1i(uPaletteSize, palette.length);
     for (let i = 0; i < MAX_PALETTE_SIZE; i++) {
         const color = palette.getColor(i);
-        gl.uniform3fv(gl.getUniformLocation(program, `u_palette[${i}]`), color.gl);
+        gl.uniform3fv(gl.getUniformLocation(program, `u_pal[${i}]`), color.gl);
     }
 
     const ctx: VoronoiContext = {
@@ -119,7 +144,7 @@ export function initGL(canvas: HTMLCanvasElement): VoronoiContext {
         uniforms: {
             seedCount: uSeedCount,
             resolution: uResolution,
-            useClip: uUseClip,
+            // useClip: uUseClip, // Removed
             paletteSize: uPaletteSize,
             renderIds: uRenderIds,
             offset: uOffset,
@@ -145,7 +170,7 @@ export function updatePalette(ctx: VoronoiContext): void {
 
     for (let i = 0; i < MAX_PALETTE_SIZE; i++) {
         const color = palette.getColor(i);
-        gl.uniform3fv(gl.getUniformLocation(program, `u_palette[${i}]`), color.gl);
+        gl.uniform3fv(gl.getUniformLocation(program, `u_pal[${i}]`), color.gl);
     }
 }
 
@@ -172,7 +197,6 @@ const seedDataBuffer = new Float32Array(MAX_SEEDS * 4);
 export function render(
     ctx: VoronoiContext,
     tiles: Tile[],
-    useClip: boolean = false,
     offset: { x: number, y: number } = { x: 0, y: 0 },
     containerSize: { w: number, h: number } = { w: viewport.width, h: viewport.height },
     gapSize: number = 3.0,
@@ -212,16 +236,14 @@ export function render(
     );
 
     gl.uniform1i(uniforms.seedCount, count);
-    gl.uniform1i(uniforms.useClip, useClip ? 1 : 0);
+    // gl.uniform1i(uniforms.useClip, useClip ? 1 : 0); // Removed
     gl.uniform1i(uniforms.renderIds, 0); // Ensure visual mode
 
     // Set offset and size
     gl.uniform2f(uniforms.offset, offset.x, offset.y);
     gl.uniform2f(uniforms.containerSize, containerSize.w, containerSize.h);
 
-    if (gapSize !== 3.0) {
-        console.log("[MosaicDebug] render gapSize:", gapSize, "aaSize:", aaSize);
-    }
+
     gl.uniform1f(uniforms.gapSize, gapSize);
     gl.uniform1f(uniforms.aaSize, aaSize);
 

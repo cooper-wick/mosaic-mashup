@@ -2,147 +2,69 @@ import { MAX_SEEDS, MAX_PALETTE_SIZE } from "../utils/constants.ts";
 
 export const UNWEIGHTED_FRAGMENT_SHADER_SOURCE = `#version 300 es
 precision highp float;
-
-// Uniforms
-uniform sampler2D u_seedTexture;    // Texture: [x, y, radius, colorIndex + highlightFlag]
-uniform int       u_seedCount;      // Number of active tiles
-uniform vec2      u_resolution;     // Canvas resolution
-uniform vec3      u_palette[${MAX_PALETTE_SIZE}]; // Color palette array (fixed max size)
-uniform int       u_paletteSize;    // Actual number of colors in palette
-uniform int       u_renderIds;      // 0 = visual, 1 = IDs
-uniform vec2      u_offset;         // Top-left position of the game container
-uniform vec2      u_containerSize;  // Size of the game container
-uniform float     u_gapSize;        // The width of the gap between tiles
-uniform float     u_aaSize;         // The antialiasing width
-
-out vec4 outColor;
-
-// Pseudo-random function
-float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+uniform sampler2D u_st;
+uniform int u_sc;
+uniform vec2 u_res;
+uniform vec3 u_pal[${MAX_PALETTE_SIZE}];
+uniform int u_ps;
+uniform int u_rid;
+uniform vec2 u_off;
+uniform vec2 u_cs;
+uniform float u_gs;
+uniform float u_aa;
+out vec4 o;
+void main(){
+vec2 p=gl_FragCoord.xy;p.y=u_res.y-p.y;
+vec2 l=p-u_off;
+if(l.x<0.||l.x>u_cs.x||l.y<0.||l.y>u_cs.y)discard;
+float md=1e10;
+int ci=-1;
+vec2 csp=vec2(0.);
+for(int i=0;i<${MAX_SEEDS};i++){
+if(i>=u_sc)break;
+vec4 s=texelFetch(u_st,ivec2(i,0),0);
+float d=distance(l,s.xy);
+if(d<md){md=d;ci=i;csp=s.xy;}
 }
-
-void main() {
-    // 1. Calculate pixel position relative to the container
-    float screenY = u_resolution.y - gl_FragCoord.y;
-    vec2 screenPos = vec2(gl_FragCoord.x, screenY);
-    vec2 localPos = screenPos - u_offset;
-    
-    // 2. Clipping: Discard pixels outside the container
-    if (localPos.x < 0.0 || localPos.x > u_containerSize.x || 
-        localPos.y < 0.0 || localPos.y > u_containerSize.y) {
-        discard; 
-    }
-
-    vec2 pixelPos = localPos;
-
-    // --- Pass 1: Find the closest seed ---
-    float minDist = 1e10;
-    int closestIndex = -1;
-    vec2 closestSeedPos = vec2(0.0);
-
-    for(int i = 0; i < ${MAX_SEEDS}; i++) {
-        if(i >= u_seedCount) break;
-        vec4 seed = texelFetch(u_seedTexture, ivec2(i, 0), 0);
-        float d = distance(pixelPos, seed.xy);
-        if(d < minDist) {
-            minDist = d;
-            closestIndex = i;
-            closestSeedPos = seed.xy;
-        }
-    }
-
-    // --- Pass 2: Find the distance to the closest edge (Perpendicular Bisector) ---
-    float minEdgeDist = 1e10;
-
-    for(int i = 0; i < ${MAX_SEEDS}; i++) {
-        if(i >= u_seedCount) break;
-        if(i == closestIndex) continue;
-
-        vec4 seed = texelFetch(u_seedTexture, ivec2(i, 0), 0);
-        vec2 neighborPos = seed.xy;
-        vec2 toNeighbor = neighborPos - closestSeedPos;
-        vec2 midPoint = closestSeedPos + toNeighbor * 0.5;
-        float distToBisector = dot(midPoint - pixelPos, normalize(toNeighbor));
-        minEdgeDist = min(minEdgeDist, distToBisector);
-    }
-    
-    if (closestIndex == -1 || u_seedCount <= 1) {
-        minEdgeDist = 1000.0;
-    }
-
-    if (u_renderIds == 1) {
-        if (closestIndex == -1) {
-            outColor = vec4(0.0);
-        } else {
-            int idx = closestIndex;
-            float r = float(idx & 255) / 255.0;
-            float g = float((idx >> 8) & 255) / 255.0;
-            float b = float((idx >> 16) & 255) / 255.0;
-            outColor = vec4(r, g, b, 1.0);
-        }
-        return;
-    }
-
-    // Coloring
-    vec4 closestSeed = texelFetch(u_seedTexture, ivec2(closestIndex, 0), 0);
-    
-    float rawValue = closestSeed.w;
-    int colorIndex = clamp(int(floor(rawValue)), 0, max(u_paletteSize - 1, 0));
-    float highlightFactor = step(0.05, fract(rawValue)); 
-
-    vec3 baseColor = u_palette[colorIndex];
-    
-    // Lighting direction (top-left)
-    vec2 lightDir = normalize(vec2(-1.0, -1.0));
-    vec2 centerToPixel = pixelPos - closestSeedPos;
-    float centerDist = length(centerToPixel);
-    vec2 dirFromCenter = centerDist > 0.001 ? centerToPixel / centerDist : vec2(0.0);
-    float lightDot = dot(dirFromCenter, lightDir);
- 
-    float halfGap = u_gapSize * 0.25;
-        
-    if (highlightFactor > 0.5) {
-        // --- PRESSED / INSET EFFECT (luminance-adaptive) ---
-
-        float lum = dot(baseColor, vec3(0.299, 0.587, 0.114));
-
-        // 1. Adaptive darken/lighten: dark tiles get pushed lighter, light tiles darker
-        //    Blend factor: lum=0 → shift toward lighter, lum=1 → shift toward darker
-        float darkenAmt = mix(0.85, 0.6, lum);   // light tiles darken more
-        float lightenAmt = mix(0.25, 0.0, lum);    // dark tiles get additive boost
-        baseColor = baseColor * darkenAmt + vec3(lightenAmt);
-
-        // 2. Inner shadow: darken near edges for depth
-        float insetShadow = smoothstep(0.0, 12.0, minEdgeDist - halfGap);
-        float shadowStrength = mix(0.75, 0.55, lum); // stronger on light tiles
-        baseColor *= mix(shadowStrength, 1.0, insetShadow);
-
-        // 3. Directional inset bevel
-        float bevelWidth = 8.0;
-        float bevelStrength = smoothstep(bevelWidth, 0.0, minEdgeDist - halfGap);
-        float bevelShading = mix(0.15, -0.08, lightDot * 0.5 + 0.5);
-        baseColor += baseColor * bevelShading * bevelStrength;
-
-        // 4. Contrasting inner outline ring — visible on any color
-        //    Renders a thin band at a fixed distance from the edge
-        float outlineCenter = halfGap + 3.0;
-        float outlineWidth = 1.8;
-        float outlineRing = 1.0 - smoothstep(0.0, outlineWidth, abs(minEdgeDist - outlineCenter));
-        // Auto-contrast: white outline on dark tiles, dark outline on light tiles
-        vec3 outlineColor = mix(vec3(0.75), vec3(0.0), step(0.45, lum));
-        baseColor = mix(baseColor, outlineColor, outlineRing * 0.55);
-
-        // 5. Subtle desaturation to further distinguish from normal tiles
-        float grey = dot(baseColor, vec3(0.299, 0.587, 0.114));
-        baseColor = mix(baseColor, vec3(grey), 0.15);
-    }
-
-    // Edges & Anti-aliasing
-    float edgeFactor = smoothstep(halfGap, halfGap + u_aaSize, minEdgeDist);
-    
-    vec3 borderColor = mix(vec3(0.08), vec3(0.15, 0.15, 0.2), highlightFactor);
-    baseColor = mix(borderColor, baseColor, edgeFactor);
-
-    outColor = vec4(clamp(baseColor, 0.0, 1.0), 1.0);
+float med=1e10;
+for(int i=0;i<${MAX_SEEDS};i++){
+if(i>=u_sc)break;
+if(i==ci)continue;
+vec4 s=texelFetch(u_st,ivec2(i,0),0);
+vec2 n=s.xy;
+vec2 tn=n-csp;
+float db=dot(csp+tn*.5-l,normalize(tn));
+med=min(med,db);
+}
+if(ci==-1||u_sc<=1)med=1e3;
+if(u_rid==1){
+if(ci==-1)o=vec4(0.);
+else{
+float r=float(ci&255)/255.;
+float g=float((ci>>8)&255)/255.;
+float b=float((ci>>16)&255)/255.;
+o=vec4(r,g,b,1.);
+}
+return;
+}
+vec4 cs=texelFetch(u_st,ivec2(ci,0),0);
+float rv=cs.w;
+int cidx=clamp(int(floor(rv)),0,max(u_ps-1,0));
+float hf=step(.05,fract(rv));
+vec3 bc=u_pal[cidx];
+float ld=dot(normalize(l-csp),normalize(vec2(-1.)));
+float hg=u_gs*.25;
+if(hf>.5){
+float lum=dot(bc,vec3(.299,.587,.114));
+bc=bc*mix(.85,.6,lum)+vec3(mix(.25,0.,lum));
+float is=smoothstep(0.,12.,med-hg);
+bc*=mix(mix(.75,.55,lum),1.,is);
+float bs=mix(.15,-.08,ld*.5+.5)*smoothstep(8.,0.,med-hg);
+bc+=bc*bs;
+float or=1.-smoothstep(0.,1.8,abs(med-(hg+3.)));
+bc=mix(bc,mix(vec3(.75),vec3(0.),step(.45,lum)),or*.55);
+bc=mix(bc,vec3(dot(bc,vec3(.299,.587,.114))),.15);
+}
+float ef=smoothstep(hg,hg+u_aa,med);
+o=vec4(clamp(mix(mix(vec3(.08),vec3(.15,.15,.2),hf),bc,ef),0.,1.),1.);
 }`;

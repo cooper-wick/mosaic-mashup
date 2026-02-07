@@ -23,8 +23,6 @@ export class LobbyScreen implements Screen {
         const el = document.getElementById("lobby");
         if (el) el.style.display = "flex";
 
-        const btnDraw = document.getElementById("btn-draw");
-
         const btnPlay1 = document.getElementById("btn-play");
         if (btnPlay1) {
             btnPlay1.onclick = () => this.startGame(0);
@@ -36,17 +34,6 @@ export class LobbyScreen implements Screen {
         const btnPlay3 = document.getElementById("btn-play-3");
         if (btnPlay3) {
             btnPlay3.onclick = () => this.startGame(2);
-        }
-
-        if (btnDraw) {
-            // Lazy load DrawScreen to avoid circular dependencies if any
-            import("./drawScreen").then(({ DrawScreen }) => {
-                if (btnDraw) {
-                    btnDraw.onclick = () => {
-                        this.manager.switch(new DrawScreen(this.manager, this.glCtx, this.overlay));
-                    };
-                }
-            });
         }
 
         // Hide bucket container (if it exists) since it's not relevant in lobby
@@ -114,12 +101,6 @@ export class LobbyScreen implements Screen {
     exit() {
         const el = document.getElementById("lobby");
         if (el) el.style.display = "none";
-
-        // Cleanup listeners
-        const btnPlay = document.getElementById("btn-play");
-        const btnDraw = document.getElementById("btn-draw");
-        if (btnPlay) btnPlay.onclick = null;
-        if (btnDraw) btnDraw.onclick = null;
     }
 
     update(dt: number) {

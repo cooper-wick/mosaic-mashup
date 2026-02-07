@@ -137,7 +137,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   color: white;
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: bold;
   pointer-events: none;
   text-shadow: 0 4px 10px rgba(0, 0, 0, 1.0), 0 0 20px rgba(0, 0, 0, 0.9);
@@ -152,15 +152,7 @@ body {
   opacity: 1;
 }
 
-#draw-controls {
-  position: absolute;
-  bottom: 20px;
-  right: 0;
-  /*transform: 0;*/
-  display: flex;
-  gap: 15px;
-  z-index: 100;
-}
+
 
 #background-layer {
   position: absolute;
