@@ -1,4 +1,3 @@
-
 import { Screen } from "../model/types/screen";
 import { ScreenManager } from "./screenManager";
 import { render, resizeGL, VoronoiContext } from "../shaders/rendering";
@@ -17,6 +16,10 @@ export class DrawScreen implements Screen {
     private backgroundImage: HTMLImageElement | null = null;
     private isDragging = false;
     private draggedTile: Tile | null = null;
+
+    private mosaicWidth: number = viewport.width;
+    private mosaicHeight: number = viewport.height;
+    private frameRect: { x: number, y: number, w: number, h: number } = { x: 0, y: 0, w: 0, h: 0 };
 
     constructor(
         private manager: ScreenManager,
@@ -51,11 +54,37 @@ export class DrawScreen implements Screen {
         const btnImport = document.getElementById("btn-import");
         const txtData = document.getElementById("mosaic-data") as HTMLTextAreaElement;
         const txtName = document.getElementById("mosaic-name") as HTMLInputElement;
+        const txtWidth = document.getElementById("mosaic-width") as HTMLInputElement;
+        const txtHeight = document.getElementById("mosaic-height") as HTMLInputElement;
+
+        // Init inputs
+        if (txtWidth && txtHeight) {
+            txtWidth.value = this.mosaicWidth.toString();
+            txtHeight.value = this.mosaicHeight.toString();
+
+            txtWidth.onchange = () => {
+                const val = parseInt(txtWidth.value);
+                if (!isNaN(val) && val > 0) {
+                    this.mosaicWidth = val;
+                    this.updateMosaicFrame();
+                }
+            };
+            txtHeight.onchange = () => {
+                const val = parseInt(txtHeight.value);
+                if (!isNaN(val) && val > 0) {
+                    this.mosaicHeight = val;
+                    this.updateMosaicFrame();
+                }
+            };
+        }
 
         if (btnUpload && fileInput) {
             btnUpload.onclick = () => fileInput.click();
             fileInput.onchange = (e) => this.handleImageUpload(e);
         }
+
+        // Initial update
+        this.updateMosaicFrame();
 
         const btnMerge = document.getElementById("btn-merge");
         const txtMergeSrc = document.getElementById("merge-src") as HTMLInputElement;
@@ -86,7 +115,16 @@ export class DrawScreen implements Screen {
         if (btnExport && txtData && txtName) {
             btnExport.onclick = () => {
                 const name = txtName.value || "Untitled";
-                const mosaic = new CompletedMosaic(name, this.tiles);
+
+                // Shift tiles to be relative to (0,0) of the mosaic
+                const exportedTiles = this.tiles.map(t => {
+                    const nt = t.clone();
+                    nt.pos.x -= this.frameRect.x;
+                    nt.pos.y -= this.frameRect.y;
+                    return nt;
+                });
+
+                const mosaic = new CompletedMosaic(name, this.mosaicWidth, this.mosaicHeight, exportedTiles);
                 const data = MosaicSerializer.serialize(mosaic);
                 txtData.value = data;
                 alert("Mosaic exported to text box!");
@@ -99,7 +137,23 @@ export class DrawScreen implements Screen {
                     const data = txtData.value;
                     if (!data) return;
                     const mosaic = MosaicSerializer.deserialize(data);
-                    this.tiles = mosaic.tiles;
+
+                    this.mosaicWidth = mosaic.width;
+                    this.mosaicHeight = mosaic.height;
+
+                    if (txtWidth) txtWidth.value = this.mosaicWidth.toString();
+                    if (txtHeight) txtHeight.value = this.mosaicHeight.toString();
+
+                    this.updateMosaicFrame();
+
+                    // Shift tiles to be absolute screen coordinates
+                    this.tiles = mosaic.tiles.map(t => {
+                        const nt = t.clone();
+                        nt.pos.x += this.frameRect.x;
+                        nt.pos.y += this.frameRect.y;
+                        return nt;
+                    });
+
                     if (txtName) txtName.value = mosaic.name;
                     alert("Mosaic imported!");
                 } catch (e) {
@@ -152,10 +206,16 @@ export class DrawScreen implements Screen {
 
     render() {
         this.overlay.clearRect(0, 0, viewport.width, viewport.height);
+
+        // Draw Frame Border
+        const ctx = this.overlay;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.frameRect.x, this.frameRect.y, this.frameRect.w, this.frameRect.h);
+
         render(this.glCtx, this.tiles, true);
 
         // Draw dots at seed points
-        const ctx = this.overlay;
         ctx.fillStyle = "black";
         for (const tile of this.tiles) {
             ctx.beginPath();
@@ -166,6 +226,26 @@ export class DrawScreen implements Screen {
 
     onResize() {
         resizeGL(this.glCtx);
+        this.updateMosaicFrame();
+    }
+
+    private updateMosaicFrame() {
+        // Center the mosaic frame in the viewport
+        const x = (viewport.width - this.mosaicWidth) / 2;
+        const y = (viewport.height - this.mosaicHeight) / 2;
+        this.frameRect = { x, y, w: this.mosaicWidth, h: this.mosaicHeight };
+
+        // Update background layer to match
+        const bgLayer = document.getElementById("background-layer");
+        if (bgLayer) {
+            bgLayer.style.left = `${x}px`;
+            bgLayer.style.top = `${y}px`;
+            bgLayer.style.width = `${this.mosaicWidth}px`;
+            bgLayer.style.height = `${this.mosaicHeight}px`;
+            // Ensure cover is used so it fills the mosaic frame exactly as we sample
+            bgLayer.style.backgroundSize = "cover";
+            bgLayer.style.backgroundPosition = "center";
+        }
     }
 
     private handleImageUpload(event: Event) {
@@ -181,9 +261,7 @@ export class DrawScreen implements Screen {
                     const bgLayer = document.getElementById("background-layer");
                     if (bgLayer) {
                         bgLayer.style.backgroundImage = `url('${e.target?.result}')`;
-                        bgLayer.style.backgroundSize = "contain";
-                        bgLayer.style.backgroundRepeat = "no-repeat";
-                        bgLayer.style.backgroundPosition = "center";
+                        // Positioning handled by updateMosaicFrame + CSS
                     }
                 };
                 img.src = e.target?.result as string;
@@ -275,37 +353,56 @@ export class DrawScreen implements Screen {
     private sampleColor(x: number, y: number): number {
         if (!this.backgroundImage) return 0;
 
-        // Calculate render dimensions to match CSS 'background-size: contain' and 'background-position: center'
-        const imgRatio = this.backgroundImage.width / this.backgroundImage.height;
-        const screenRatio = viewport.width / viewport.height;
+        // Ensure x,y is inside the frame
+        if (x < this.frameRect.x || x >= this.frameRect.x + this.frameRect.w ||
+            y < this.frameRect.y || y >= this.frameRect.y + this.frameRect.h) {
+            return 0; // Outside mosaic area
+        }
+
+        // Relative coordinates inside the mosaic frame
+        const relX = x - this.frameRect.x;
+        const relY = y - this.frameRect.y;
+
+        const frameW = this.frameRect.w;
+        const frameH = this.frameRect.h;
+
+        // Image dimensions
+        const imgW = this.backgroundImage.width;
+        const imgH = this.backgroundImage.height;
+
+        // "Cover" logic simulation:
+        // Key idea: Scale image so it covers the frame.
+        // If image aspect > frame aspect (image is wider), scale by height, crop sides.
+        // If image aspect < frame aspect (image is taller), scale by width, crop top/bottom.
+
+        const imgRatio = imgW / imgH;
+        const frameRatio = frameW / frameH;
 
         let renderW, renderH, renderX, renderY;
 
-        // "Contain" logic:
-        // If screen is wider (larger ratio) than image, image is height-constrained.
-        if (screenRatio > imgRatio) {
-            renderH = viewport.height;
-            renderW = viewport.height * imgRatio;
+        if (imgRatio > frameRatio) {
+            // Image is wider than frame: Height match, crop width.
+            renderH = frameH;
+            renderW = frameH * imgRatio;
             renderY = 0;
-            renderX = (viewport.width - renderW) / 2;
+            renderX = (frameW - renderW) / 2; // Negative offset
         } else {
-            // Screen is narrower, image is width-constrained.
-            renderW = viewport.width;
-            renderH = viewport.width / imgRatio;
+            // Image is taller than frame: Width match, crop height.
+            renderW = frameW;
+            renderH = frameW / imgRatio;
             renderX = 0;
-            renderY = (viewport.height - renderH) / 2;
+            renderY = (frameH - renderH) / 2; // Negative offset
         }
 
-        // Map screen coordinates to image coordinates
-        const ix = Math.floor((x - renderX) * (this.backgroundImage.width / renderW));
-        const iy = Math.floor((y - renderY) * (this.backgroundImage.height / renderH));
+        // Map relative screen coordinates (relX, relY) to image coordinates
+        // renderX/Y is where the top-left of the image would be relative to the frame top-left.
+        // So: local_image_pos_x = relX - renderX
+        // Then scale back to natural image size.
 
-        // Check bounds
-        if (ix < 0 || iy < 0 || ix >= this.backgroundImage.width || iy >= this.backgroundImage.height) {
-            return 0; // default color if outside image bounds
-        }
+        const ix = Math.floor((relX - renderX) * (imgW / renderW));
+        const iy = Math.floor((relY - renderY) * (imgH / renderH));
 
-        // Lazy init sampling canvas
+        // Start sampling
         if (!this.samplingCanvas || !this.samplingCtx) {
             this.samplingCanvas = document.createElement("canvas");
             this.samplingCanvas.width = 1;
@@ -313,17 +410,14 @@ export class DrawScreen implements Screen {
             this.samplingCtx = this.samplingCanvas.getContext("2d", { willReadFrequently: true });
         }
 
+        // Check bounds (though logic should keep it generally safe, rounding might be off)
+        if (ix < 0 || iy < 0 || ix >= imgW || iy >= imgH) return 0;
+
         const ctx = this.samplingCtx!;
-        // Clear previous state just in case (though we overwrite)
         ctx.clearRect(0, 0, 1, 1);
-
-        // Draw just the 1 pixel we need
         ctx.drawImage(this.backgroundImage, ix, iy, 1, 1, 0, 0, 1, 1);
-
         const p = ctx.getImageData(0, 0, 1, 1).data;
 
-        // Check current palette for a match, or add if unique and space available
-        // Threshold of 2500 corresponds to a Euclidean distance of 50 in RGB space
         return palette.findOrAddColor(p[0], p[1], p[2], 2500);
     }
 }

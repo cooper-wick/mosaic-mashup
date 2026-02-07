@@ -14,7 +14,7 @@ export function extractSpritesFromData(
     width: number,
     height: number,
     tiles: Tile[],
-    scale: number = 1.0
+    _scale: number = 1.0
 ): Map<Tile, HTMLCanvasElement> {
     const results = new Map<Tile, HTMLCanvasElement>();
 

@@ -49,7 +49,7 @@ export class MosaicSerializer {
     /**
      * Deserializes a string back into a CompletedMosaic.
      */
-    static deserialize(data: string): CompletedMosaic {
+    static deserialize(data: string, scalar: number = 1): CompletedMosaic {
         try {
             const parts = data.split("||");
             if (parts.length < 2) {
@@ -139,7 +139,7 @@ export class MosaicSerializer {
                 }
             }
 
-            return new CompletedMosaic(name, width, height, tiles);
+            return new CompletedMosaic(name, width, height, tiles, scalar);
 
         } catch (e) {
             console.error("Failed to deserialize mosaic:", e);

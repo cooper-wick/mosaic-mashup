@@ -73,8 +73,8 @@ export class GameplayScreen implements Screen {
         const encodingIndex = this.levelIndex % mosaicEncodings.length;
         const encoding = mosaicEncodings[encodingIndex];
 
-        const mosaic = MosaicSerializer.deserialize(encoding);
-        this.level = new GameLevel(mosaic);
+        const mosaic = MosaicSerializer.deserialize(encoding.data, encoding.scalar);
+        this.level = new GameLevel(mosaic, encoding.doRandomColor);
 
         // Pre-warm physics to settle tiles
         const limit = 1000;
@@ -530,17 +530,17 @@ export class GameplayScreen implements Screen {
 
                 ctx.restore();
             } else if (this.state === GameState.WAITING_PILES && this.animatedPiles.size === 0) {
-                // const ctx = this.overlay;
-                // ctx.save();
-                // ctx.font = "20px system-ui";
-                // ctx.fillStyle = "#fff";
-                // ctx.textAlign = "center";
-                // ctx.shadowColor = "rgba(0,0,0,0.5)";
-                // ctx.shadowBlur = 6;
-                //
-                // // Position above buckets
-                // ctx.fillText('Tap a bucket to fill the mosaic', viewport.width / 2, viewport.height - 120);
-                // ctx.restore();
+                const ctx = this.overlay;
+                ctx.save();
+                ctx.font = "20px system-ui";
+                ctx.fillStyle = "#fff";
+                ctx.textAlign = "center";
+                ctx.shadowColor = "rgba(0,0,0,0.5)";
+                ctx.shadowBlur = 6;
+
+                // Position above buckets
+                ctx.fillText('Tap a bucket to fill the mosaic', viewport.width / 2, viewport.height - 140);
+                ctx.restore();
             }
         }
     }

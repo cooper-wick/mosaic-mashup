@@ -15,9 +15,6 @@ uniform vec2      u_containerSize;  // Size of the game container
 uniform float     u_gapSize;        // The width of the gap between tiles
 uniform float     u_aaSize;         // The antialiasing width
 
-// Constants
-// const float AA_SIZE  = 1.5; // (Removed, use uniform)
-
 out vec4 outColor;
 
 // Pseudo-random function
@@ -27,25 +24,17 @@ float hash(vec2 p) {
 
 void main() {
     // 1. Calculate pixel position relative to the container
-    // gl_FragCoord.xy is in window coordinates (bottom-left origin)
-    // We want coordinates relative to the container's top-left
-    
-    // Invert Y to match screen space (top-left origin)
     float screenY = u_resolution.y - gl_FragCoord.y;
     vec2 screenPos = vec2(gl_FragCoord.x, screenY);
-    
-    // Apply offset to get local container coordinates
     vec2 localPos = screenPos - u_offset;
     
     // 2. Clipping: Discard pixels outside the container
-    // We can add a small padding/margin if we want the edge to be soft, but hard clip is fine for now
     if (localPos.x < 0.0 || localPos.x > u_containerSize.x || 
         localPos.y < 0.0 || localPos.y > u_containerSize.y) {
         discard; 
-        // OR: return vec4(0.0); if we want transparent background
     }
 
-    vec2 pixelPos = localPos; // Use local coordinates for Voronoi calculation
+    vec2 pixelPos = localPos;
 
     // --- Pass 1: Find the closest seed ---
     float minDist = 1e10;
@@ -54,12 +43,8 @@ void main() {
 
     for(int i = 0; i < ${MAX_SEEDS}; i++) {
         if(i >= u_seedCount) break;
-
-        // Fetch tile data from texture: [x, y, radius, packedData]
         vec4 seed = texelFetch(u_seedTexture, ivec2(i, 0), 0);
-        
         float d = distance(pixelPos, seed.xy);
-
         if(d < minDist) {
             minDist = d;
             closestIndex = i;
@@ -68,51 +53,25 @@ void main() {
     }
 
     // --- Pass 2: Find the distance to the closest edge (Perpendicular Bisector) ---
-    // The edge is the bisector between the closest seed and its neighbor.
-    // We want the minimum distance from pixelPos to any bisector line.
-    
-    float minEdgeDist = 1e10; // Distance to the nearest Voronoi edge
+    float minEdgeDist = 1e10;
 
     for(int i = 0; i < ${MAX_SEEDS}; i++) {
         if(i >= u_seedCount) break;
-        if(i == closestIndex) continue; // Skip the closest seed itself
+        if(i == closestIndex) continue;
 
         vec4 seed = texelFetch(u_seedTexture, ivec2(i, 0), 0);
         vec2 neighborPos = seed.xy;
-
-        // Vector from closest seed to neighbor
         vec2 toNeighbor = neighborPos - closestSeedPos;
-        
-        // Midpoint of the two seeds
         vec2 midPoint = closestSeedPos + toNeighbor * 0.5;
-        
-        // The bisector line passes through midPoint and is perpendicular to toNeighbor.
-        // Distance from pixelPos to this line is the projection of (pixelPos - midPoint) onto the direction of toNeighbor.
-        // We use dot product with normalized toNeighbor.
-        
         float distToBisector = dot(midPoint - pixelPos, normalize(toNeighbor));
-        
-        // We only care about positive distances (meaning we are on the correct side of the bisector)
-        // But since we are by definition in the Voronoi cell of closestIndex, pixelPos is closer to standard
-        // closestSeedPos than neighborPos, so distToBisector should be positive if we orient correctly.
-        // Let's verify orientation:
-        // midPoint - pixelPos points roughly towards midPoint from our pixel.
-        // toNeighbor points away from closestSeedPos. 
-        // If pixel is at closestSeedPos, (mid - closest) . (neighbor - closest) > 0.
-        // So this order is correct.
-        
         minEdgeDist = min(minEdgeDist, distToBisector);
     }
     
-    // Fallback if only 1 seed exists
     if (closestIndex == -1 || u_seedCount <= 1) {
         minEdgeDist = 1000.0;
     }
 
     if (u_renderIds == 1) {
-        // Output ID if active
-        // 0 = no ID, index+1 = ID? Or just index.
-        // Let's us e index directly as alpha is validity.
         if (closestIndex == -1) {
             outColor = vec4(0.0);
         } else {
@@ -129,43 +88,61 @@ void main() {
     vec4 closestSeed = texelFetch(u_seedTexture, ivec2(closestIndex, 0), 0);
     
     float rawValue = closestSeed.w;
-    // Clamp to actual palette size for graceful fallback on invalid colorIDs
     int colorIndex = clamp(int(floor(rawValue)), 0, max(u_paletteSize - 1, 0));
     float highlightFactor = step(0.05, fract(rawValue)); 
 
     vec3 baseColor = u_palette[colorIndex];
     
-    // --- Edge Highlights (Bevel) ---
-    // Use the true minEdgeDist for bevel calculation.
-    // minEdgeDist is 0 at the true Voronoi edge, and increases as we go towards the center.
-    
-    // Standard lighting direction (top-left)
+    // Lighting direction (top-left)
     vec2 lightDir = normalize(vec2(-1.0, -1.0));
-    
-    // To get a bevel, we need a gradient.
-    
     vec2 centerToPixel = pixelPos - closestSeedPos;
     float centerDist = length(centerToPixel);
     vec2 dirFromCenter = centerDist > 0.001 ? centerToPixel / centerDist : vec2(0.0);
     float lightDot = dot(dirFromCenter, lightDir);
  
-    
-    // Edge Proximity:
     float halfGap = u_gapSize * 0.25;
         
     if (highlightFactor > 0.5) {
-        // --- PRESSED / INSET EFFECT ---
-        baseColor *= 0.7; 
+        // --- PRESSED / INSET EFFECT (luminance-adaptive) ---
+
+        float lum = dot(baseColor, vec3(0.299, 0.587, 0.114));
+
+        // 1. Adaptive darken/lighten: dark tiles get pushed lighter, light tiles darker
+        //    Blend factor: lum=0 → shift toward lighter, lum=1 → shift toward darker
+        float darkenAmt = mix(0.85, 0.6, lum);   // light tiles darken more
+        float lightenAmt = mix(0.25, 0.0, lum);    // dark tiles get additive boost
+        baseColor = baseColor * darkenAmt + vec3(lightenAmt);
+
+        // 2. Inner shadow: darken near edges for depth
+        float insetShadow = smoothstep(0.0, 12.0, minEdgeDist - halfGap);
+        float shadowStrength = mix(0.75, 0.55, lum); // stronger on light tiles
+        baseColor *= mix(shadowStrength, 1.0, insetShadow);
+
+        // 3. Directional inset bevel
+        float bevelWidth = 8.0;
+        float bevelStrength = smoothstep(bevelWidth, 0.0, minEdgeDist - halfGap);
+        float bevelShading = mix(0.15, -0.08, lightDot * 0.5 + 0.5);
+        baseColor += baseColor * bevelShading * bevelStrength;
+
+        // 4. Contrasting inner outline ring — visible on any color
+        //    Renders a thin band at a fixed distance from the edge
+        float outlineCenter = halfGap + 3.0;
+        float outlineWidth = 1.8;
+        float outlineRing = 1.0 - smoothstep(0.0, outlineWidth, abs(minEdgeDist - outlineCenter));
+        // Auto-contrast: white outline on dark tiles, dark outline on light tiles
+        vec3 outlineColor = mix(vec3(0.75), vec3(0.0), step(0.45, lum));
+        baseColor = mix(baseColor, outlineColor, outlineRing * 0.55);
+
+        // 5. Subtle desaturation to further distinguish from normal tiles
+        float grey = dot(baseColor, vec3(0.299, 0.587, 0.114));
+        baseColor = mix(baseColor, vec3(grey), 0.15);
     }
 
     // Edges & Anti-aliasing
-    // We want to discard or darken pixels where minEdgeDist < halfGap
     float edgeFactor = smoothstep(halfGap, halfGap + u_aaSize, minEdgeDist);
     
-    // Apply edge darkening / border color
     vec3 borderColor = mix(vec3(0.08), vec3(0.15, 0.15, 0.2), highlightFactor);
     baseColor = mix(borderColor, baseColor, edgeFactor);
 
     outColor = vec4(clamp(baseColor, 0.0, 1.0), 1.0);
 }`;
-

@@ -23,11 +23,19 @@ export class LobbyScreen implements Screen {
         const el = document.getElementById("lobby");
         if (el) el.style.display = "flex";
 
-        const btnPlay = document.getElementById("btn-play");
         const btnDraw = document.getElementById("btn-draw");
 
-        if (btnPlay) {
-            btnPlay.onclick = () => this.startGame(0);
+        const btnPlay1 = document.getElementById("btn-play");
+        if (btnPlay1) {
+            btnPlay1.onclick = () => this.startGame(0);
+        }
+        const btnPlay2 = document.getElementById("btn-play-2");
+        if (btnPlay2) {
+            btnPlay2.onclick = () => this.startGame(1);
+        }
+        const btnPlay3 = document.getElementById("btn-play-3");
+        if (btnPlay3) {
+            btnPlay3.onclick = () => this.startGame(2);
         }
 
         if (btnDraw) {

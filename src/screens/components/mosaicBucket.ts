@@ -9,7 +9,6 @@ export class MosaicBucket {
 
     private _count: number = 0;
     private _target: number = 0;
-    private _isInteractive: boolean = false;
 
     constructor(parent: HTMLElement, public readonly colorID: ColorNumber, target: number) {
         this._target = target;
@@ -76,7 +75,6 @@ export class MosaicBucket {
     }
 
     setInteractive(interactive: boolean) {
-        this._isInteractive = interactive;
         if (interactive) {
             this.element.style.pointerEvents = "auto";
             this.element.style.cursor = "pointer";
