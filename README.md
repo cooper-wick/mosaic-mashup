@@ -5,7 +5,7 @@
 
 The game features **custom WebGL2 shaders** that render dynamic Voronoi diagrams, creating fluid mosaic patterns that morph in real-time as tiles move. Players collect tiles by color until they've gathered enough to reveal the complete mosaic artwork through an animated reconstruction sequence.
 
-Co-developed with [Henry Ashton Howe](https://github.com/hen1227).
+Co-developed with [Henry Abrahamsen](https://github.com/hen1227).
 
 ---
 
