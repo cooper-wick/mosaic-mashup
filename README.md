@@ -125,7 +125,6 @@ To achieve the 15kb size limit, the codebase employs aggressive optimization tec
 - Minimal abstraction layers to reduce code size
 
 **Code Minimization**
-- Concise variable names (`i`, `j`, `t`, `el`) throughout
 - No TypeScript type annotations in compiled output
 - Shared utility functions to avoid duplication
 - Inline calculations where possible
@@ -231,7 +230,7 @@ The editor is excluded from the 15kb game build and hosted separately, allowing 
 
 This project was developed in **24 hours** at **TartanHacks 2026** (Carnegie Mellon University) under the 15kb size constraint category. The challenge required building a fully functional game without any external libraries, pushing the boundaries of what's possible with vanilla web technologies.
 
-Co-developed with [Henry Ashton Howe](https://github.com/hen1227).
+Co-developed with [Henry Abrahamsen](https://github.com/hen1227).
 
 ---
 
