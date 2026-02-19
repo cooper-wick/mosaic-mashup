@@ -51,7 +51,7 @@ Co-developed with [Henry Abrahamsen](https://github.com/hen1227).
   </tr>
   <tr>
     <td align="center">
-      <img src="path/to/screenshot5.png" width="350" />
+      <img width="1464" height="739" alt="Screenshot 2026-02-19 at 10 34 20 AM" src="https://github.com/user-attachments/assets/c2992cac-8354-40e8-9cef-1ecaf981a4ed" />
       <br />
       <em>Level editor interface</em>
     </td>
