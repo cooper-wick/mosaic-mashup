@@ -31,9 +31,9 @@ Co-developed with [Henry Abrahamsen](https://github.com/hen1227).
 <table>
   <tr>
     <td align="center">
-      <img src="!https://github.com/user-attachments/assets/c3ba54c1-e1aa-4fcd-bf34-fc70adc33cc3" width="350" />
+      <img width="260" height="447" alt="Screenshot 2026-02-19 at 10 59 04 AM" src="https://github.com/user-attachments/assets/82644c1d-1b30-4b4f-a77b-2d559411fc5d" />
       <br />
-      <em>Gameplay: Collecting tiles</em>
+      <em>Home Screen</em>
     </td>
     <td align="center">
       <img src="path/to/screenshot2.png" width="350" />
