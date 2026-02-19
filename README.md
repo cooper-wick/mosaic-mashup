@@ -31,7 +31,7 @@ Co-developed with [Henry Abrahamsen](https://github.com/hen1227).
 <table>
   <tr>
     <td align="center">
-      <img src="path/to/screenshot1.png" width="350" />
+      <img src="!https://github.com/user-attachments/assets/c3ba54c1-e1aa-4fcd-bf34-fc70adc33cc3" width="350" />
       <br />
       <em>Gameplay: Collecting tiles</em>
     </td>
