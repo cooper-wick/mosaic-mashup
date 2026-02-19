@@ -120,24 +120,6 @@ export class DrawScreen implements Screen {
                     if (!data) return;
                     const mosaic = MosaicSerializer.deserialize(data);
 
-                    // Normalize imported tiles to 512x512 only if not already in that space
-                    if (mosaic.tiles.length > 0 && (mosaic.width !== 512 || mosaic.height !== 512)) {
-                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                        for (const t of mosaic.tiles) {
-                            minX = Math.min(minX, t.pos.x); minY = Math.min(minY, t.pos.y);
-                            maxX = Math.max(maxX, t.pos.x); maxY = Math.max(maxY, t.pos.y);
-                        }
-                        const cW = maxX - minX || 1;
-                        const cH = maxY - minY || 1;
-                        const scale = Math.min(512 / cW, 512 / cH);
-                        const padX = (512 - cW * scale) / 2;
-                        const padY = (512 - cH * scale) / 2;
-                        for (const t of mosaic.tiles) {
-                            t.pos.x = (t.pos.x - minX) * scale + padX;
-                            t.pos.y = (t.pos.y - minY) * scale + padY;
-                        }
-                    }
-
                     // Center the 512x512 grid in the available canvas
                     const offsetX = (viewport.width - 512) / 2;
                     const offsetY = (viewport.height - 512) / 2;
