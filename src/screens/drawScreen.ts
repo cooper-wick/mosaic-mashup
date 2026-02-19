@@ -105,6 +105,15 @@ export class DrawScreen implements Screen {
                     const data = txtData.value;
                     if (!data) return;
                     const mosaic = MosaicSerializer.deserialize(data);
+
+                    // Center the 512x512 mosaic grid in the available canvas
+                    const offsetX = (viewport.width - 512) / 2;
+                    const offsetY = (viewport.height - 512) / 2;
+                    for (const tile of mosaic.tiles) {
+                        tile.pos.x += offsetX;
+                        tile.pos.y += offsetY;
+                    }
+
                     this.tiles = mosaic.tiles;
                     if (txtName) txtName.value = mosaic.name;
                     alert("Mosaic imported!");
