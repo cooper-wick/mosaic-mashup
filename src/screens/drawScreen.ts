@@ -275,25 +275,31 @@ export class DrawScreen implements Screen {
     private sampleColor(x: number, y: number): number {
         if (!this.backgroundImage) return 0;
 
-        // Calculate render dimensions to match CSS 'background-size: contain' and 'background-position: center'
+        // Use the background layer's actual dimensions for the contain calculation,
+        // not viewport.width/height — in draw mode the viewport is narrowed for the
+        // sidebar but the background-layer div still spans the full 100vw × 100vh.
+        const bgLayer = document.getElementById("background-layer");
+        const containerW = bgLayer ? bgLayer.offsetWidth : window.innerWidth;
+        const containerH = bgLayer ? bgLayer.offsetHeight : window.innerHeight;
+
         const imgRatio = this.backgroundImage.width / this.backgroundImage.height;
-        const screenRatio = viewport.width / viewport.height;
+        const screenRatio = containerW / containerH;
 
         let renderW, renderH, renderX, renderY;
 
         // "Contain" logic:
         // If screen is wider (larger ratio) than image, image is height-constrained.
         if (screenRatio > imgRatio) {
-            renderH = viewport.height;
-            renderW = viewport.height * imgRatio;
+            renderH = containerH;
+            renderW = containerH * imgRatio;
             renderY = 0;
-            renderX = (viewport.width - renderW) / 2;
+            renderX = (containerW - renderW) / 2;
         } else {
             // Screen is narrower, image is width-constrained.
-            renderW = viewport.width;
-            renderH = viewport.width / imgRatio;
+            renderW = containerW;
+            renderH = containerW / imgRatio;
             renderX = 0;
-            renderY = (viewport.height - renderH) / 2;
+            renderY = (containerH - renderH) / 2;
         }
 
         // Map screen coordinates to image coordinates
