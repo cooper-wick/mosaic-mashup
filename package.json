@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc && vite build",
+    "build:zip": "npm run build && tar -czf dist.tar.gz -C dist . && echo 'Size (bytes):' && stat -f%z dist.tar.gz",
     "preview": "vite preview"
   },
   "devDependencies": {

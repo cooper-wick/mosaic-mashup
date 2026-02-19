@@ -8,7 +8,6 @@ import { palette } from "./constants.ts";
  */
 export function addDistinctColor(existingColors: ColorNumber[], random: () => number = Math.random): ColorNumber | null {
     if (palette.length >= palette.max) {
-        console.warn("Palette is full, cannot add distinct color.");
         return null; // Or return an existing one?
     }
 

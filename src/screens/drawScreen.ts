@@ -11,12 +11,14 @@ import { LobbyScreen } from "./lobbyScreen";
 
 import { CompletedMosaic } from "../model/components/completedMosaic";
 import { MosaicSerializer } from "../utils/mosaicSerializer";
+import type { ColorEntry } from "../utils/colorPalette";
 
 export class DrawScreen implements Screen {
     private tiles: Tile[] = [];
     private backgroundImage: HTMLImageElement | null = null;
     private isDragging = false;
     private draggedTile: Tile | null = null;
+    private savedPalette: ColorEntry[] = [];
 
     constructor(
         private manager: ScreenManager,
@@ -25,6 +27,10 @@ export class DrawScreen implements Screen {
     ) { }
 
     enter() {
+        // Reset palette to empty so image colors aren't snapped to game defaults
+        this.savedPalette = Array.from(palette.entries);
+        palette.setColors([]);
+
         // Show draw controls
         const controls = document.getElementById("draw-controls");
         if (controls) controls.style.display = "flex";
@@ -86,7 +92,21 @@ export class DrawScreen implements Screen {
         if (btnExport && txtData && txtName) {
             btnExport.onclick = () => {
                 const name = txtName.value || "Untitled";
-                const mosaic = new CompletedMosaic(name, viewport.width, viewport.height, this.tiles);
+                if (this.tiles.length === 0) { alert("No tiles to export!"); return; }
+
+                // Convert tile positions from viewport space to 512x512 grid space.
+                // The 512x512 grid is centered in the viewport, so subtract its top-left offset.
+                const offsetX = (viewport.width - 512) / 2;
+                const offsetY = (viewport.height - 512) / 2;
+                const normalizedTiles = this.tiles.map(t => new GameTile(
+                    {
+                        x: Math.round((t.pos.x - offsetX) * 10) / 10,
+                        y: Math.round((t.pos.y - offsetY) * 10) / 10,
+                    },
+                    { x: 0, y: 0 }, t.size, t.colorID as any
+                ));
+
+                const mosaic = new CompletedMosaic(name, 512, 512, normalizedTiles);
                 const data = MosaicSerializer.serialize(mosaic);
                 txtData.value = data;
                 alert("Mosaic exported to text box!");
@@ -99,6 +119,15 @@ export class DrawScreen implements Screen {
                     const data = txtData.value;
                     if (!data) return;
                     const mosaic = MosaicSerializer.deserialize(data);
+
+                    // Center the 512x512 grid in the available canvas
+                    const offsetX = (viewport.width - 512) / 2;
+                    const offsetY = (viewport.height - 512) / 2;
+                    for (const tile of mosaic.tiles) {
+                        tile.pos.x += offsetX;
+                        tile.pos.y += offsetY;
+                    }
+
                     this.tiles = mosaic.tiles;
                     if (txtName) txtName.value = mosaic.name;
                     alert("Mosaic imported!");
@@ -140,6 +169,9 @@ export class DrawScreen implements Screen {
 
         // Re-enable context menu
         window.removeEventListener("contextmenu", this.handleContextMenu);
+
+        // Restore the game palette
+        palette.setColors(this.savedPalette);
     }
 
     private handleContextMenu = (e: Event) => {
@@ -152,7 +184,7 @@ export class DrawScreen implements Screen {
 
     render() {
         this.overlay.clearRect(0, 0, viewport.width, viewport.height);
-        render(this.glCtx, this.tiles, true);
+        render(this.glCtx, this.tiles);
 
         // Draw dots at seed points
         const ctx = this.overlay;
@@ -166,6 +198,7 @@ export class DrawScreen implements Screen {
 
     onResize() {
         resizeGL(this.glCtx);
+        this.updateBackgroundLayout();
     }
 
     private handleImageUpload(event: Event) {
@@ -176,20 +209,42 @@ export class DrawScreen implements Screen {
                 const img = new Image();
                 img.onload = () => {
                     this.backgroundImage = img;
-                    console.log(img)
-                    console.log(e.target?.result)
                     const bgLayer = document.getElementById("background-layer");
                     if (bgLayer) {
                         bgLayer.style.backgroundImage = `url('${e.target?.result}')`;
-                        bgLayer.style.backgroundSize = "contain";
                         bgLayer.style.backgroundRepeat = "no-repeat";
-                        bgLayer.style.backgroundPosition = "center";
+                        this.updateBackgroundLayout();
                     }
                 };
                 img.src = e.target?.result as string;
             };
             reader.readAsDataURL(input.files[0]);
         }
+    }
+
+    private updateBackgroundLayout() {
+        if (!this.backgroundImage) return;
+        const bgLayer = document.getElementById("background-layer");
+        if (!bgLayer) return;
+
+        const imgRatio = this.backgroundImage.width / this.backgroundImage.height;
+
+        // Fit within 512x512, preserving aspect ratio
+        let renderW: number, renderH: number;
+        if (imgRatio >= 1) {
+            renderW = Math.min(512, viewport.width);
+            renderH = renderW / imgRatio;
+        } else {
+            renderH = Math.min(512, viewport.height);
+            renderW = renderH * imgRatio;
+        }
+
+        // Center within the canvas (viewport) area, not the full window
+        const posX = (viewport.width - renderW) / 2;
+        const posY = (viewport.height - renderH) / 2;
+
+        bgLayer.style.backgroundSize = `${renderW}px ${renderH}px`;
+        bgLayer.style.backgroundPosition = `${posX}px ${posY}px`;
     }
 
     onPointerDown(x: number, y: number, event?: MouseEvent | TouchEvent) {
@@ -275,28 +330,21 @@ export class DrawScreen implements Screen {
     private sampleColor(x: number, y: number): number {
         if (!this.backgroundImage) return 0;
 
-        // Calculate render dimensions to match CSS 'background-size: contain' and 'background-position: center'
         const imgRatio = this.backgroundImage.width / this.backgroundImage.height;
-        const screenRatio = viewport.width / viewport.height;
 
-        let renderW, renderH, renderX, renderY;
-
-        // "Contain" logic:
-        // If screen is wider (larger ratio) than image, image is height-constrained.
-        if (screenRatio > imgRatio) {
-            renderH = viewport.height;
-            renderW = viewport.height * imgRatio;
-            renderY = 0;
-            renderX = (viewport.width - renderW) / 2;
+        // Mirror updateBackgroundLayout: fit within 512x512, centered in the canvas area
+        let renderW: number, renderH: number;
+        if (imgRatio >= 1) {
+            renderW = Math.min(512, viewport.width);
+            renderH = renderW / imgRatio;
         } else {
-            // Screen is narrower, image is width-constrained.
-            renderW = viewport.width;
-            renderH = viewport.width / imgRatio;
-            renderX = 0;
-            renderY = (viewport.height - renderH) / 2;
+            renderH = Math.min(512, viewport.height);
+            renderW = renderH * imgRatio;
         }
+        const renderX = (viewport.width - renderW) / 2;
+        const renderY = (viewport.height - renderH) / 2;
 
-        // Map screen coordinates to image coordinates
+        // Map canvas coordinates to image coordinates
         const ix = Math.floor((x - renderX) * (this.backgroundImage.width / renderW));
         const iy = Math.floor((y - renderY) * (this.backgroundImage.height / renderH));
 

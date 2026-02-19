@@ -22,11 +22,3 @@ palette.setColors(DEFAULT_COLORS);
 
 /** @deprecated Use `palette.entries` instead */
 export const PALETTE = palette.entries;
-
-/** @deprecated Use `palette.length` instead */
-export function getNumColors(): number {
-    return palette.length;
-}
-
-// For compile-time usage in shaders (uses max size, not current size)
-export const NUM_COLORS = MAX_PALETTE_SIZE;

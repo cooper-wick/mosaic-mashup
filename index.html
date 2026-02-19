@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
-    <title>Mosaic Game</title>
+    <title>Mosaic Mashup</title>
     <style>
         * {
             margin: 0;
@@ -25,46 +25,17 @@
             -webkit-user-select: none
         }
 
-        body.draw-mode-active {
-            padding-right: 240px;
-        }
 
-        #hud {
-            display: flex;
-            gap: 28px;
-            margin-bottom: 10px;
-            color: #fff;
-            font-size: 13px
-        }
-
-        #hud .lbl {
-            opacity: .45;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px
-        }
-
-        #hud .val {
-            font-size: 24px;
-            font-weight: 700
-        }
-
-        #score-val {
-            color: #f8c71a
-        }
-
-        #combo-val {
-            color: #2ecc70
-        }
 
         #wrap {
             position: relative;
-            border-radius: 14px;
+            width: 100vw;
+            height: 100vh;
             overflow: hidden;
             touch-action: none;
-            box-shadow: 0 0 36px rgba(0, 0, 0, .5);
-            border: 1px solid rgba(255, 255, 255, .07);
-
+            /* box-shadow: 0 0 36px rgba(0, 0, 0, .5); */
+            /* border: 1px solid rgba(255, 255, 255, .07); */
+            /* border-radius: 14px; */
         }
 
         canvas {
@@ -74,10 +45,6 @@
         #gl {
             position: relative;
             z-index: 1;
-        }
-
-        #gl.draw-mode {
-            opacity: 0.5;
         }
 
         #background-layer {
@@ -100,42 +67,53 @@
             pointer-events: none
         }
 
-        #msg {
-            position: absolute;
-            top: 38%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        #lobby h1 {
+            font-size: 30px;
+            text-align: center;
             color: #fff;
-            font-size: 26px;
-            font-weight: 800;
-            pointer-events: none;
+            margin-bottom: 24px;
             text-shadow: 0 2px 18px rgba(0, 0, 0, .7);
-            opacity: 0
         }
 
-        #msg.show {
-            animation: pop 1s ease-out forwards
-        }
-
-        #chain-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, .55);
+        #btn-play,
+        #btn-play-2,
+        #btn-play-3 {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 700;
             color: #fff;
-            padding: 3px 10px;
-            border-radius: 16px;
-            font-size: 13px;
-            font-weight: 600;
-            display: none;
-            backdrop-filter: blur(3px)
+            background: #2ecc70;
+            border: black 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
         }
 
-        #hint {
-            margin-top: 14px;
-            color: rgba(255, 255, 255, .35);
-            font-size: 11px;
-            text-align: center
+        #btn-play-2 {
+            background: #e67e22;
+        }
+
+        #btn-play-3 {
+            background: #9b59b6;
+        }
+
+        #btn-create-level {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            background: #389ee3;
+            border: black 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        body.draw-mode-active {
+            padding-right: 240px;
+        }
+
+        #gl.draw-mode {
+            opacity: 0.5;
         }
 
         @keyframes pop {
@@ -162,26 +140,38 @@
         <div id="background-layer"></div>
         <canvas id="gl"></canvas>
         <canvas id="overlay"></canvas>
-        <div id="msg"></div>
-        <div id="chain-badge"></div>
         <div id="lobby">
-            <h1>Mosaic</h1>
+            <h1>Mosaic Mashup</h1>
             <button id="btn-play">Play Level 1</button>
-            <button id="btn-draw">Draw Mode</button>
+            <button id="btn-play-2">Play Level 2</button>
+            <button id="btn-play-3">Play Level 3</button>
+            <button id="btn-create-level">Create Level</button>
         </div>
         <input type="file" id="image-upload" accept="image/*" style="display: none;">
+        <div id="game-instruction">
+            <p>
+                Swipe Adjacent Tiles
+            </p>
+            <p>
+                of Matching Colors
+            </p>
+            <p>
+                to Fill Circles Below
+            </p>
+        </div>
+
     </div>
+
+    <div id="bucket-container"></div>
     <div id="draw-controls"
         style="display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 240px; flex-direction: column; gap: 12px; z-index: 1000; background: rgba(15, 15, 35, 0.95); padding: 20px; border-left: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px);">
         <h2 style="color: #fff; font-size: 16px; margin-bottom: 10px;">Draw Controls</h2>
         <input type="text" id="mosaic-name" placeholder="Mosaic Name" value="MyMosaic"
             style="padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff;">
         <button id="btn-upload"
-            style="padding: 10px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">Upload
-            Image</button>
+            style="padding: 10px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">Upload Image</button>
         <button id="btn-clear"
-            style="padding: 10px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">Clear
-            Tiles</button>
+            style="padding: 10px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">Clear Tiles</button>
         <div style="display: flex; gap: 5px; align-items: center;">
             <input type="number" id="merge-src" placeholder="Src ID"
                 style="width: 50%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff;">
@@ -190,8 +180,7 @@
                 style="width: 50%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff;">
         </div>
         <button id="btn-merge"
-            style="padding: 10px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">Merge
-            Colors</button>
+            style="padding: 10px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">Merge Colors</button>
         <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); width: 100%; margin: 5px 0;">
         <button id="btn-export"
             style="padding: 10px; cursor: pointer; background: #2ecc70; color: #fff; border: none; border-radius: 4px; font-weight: bold;">Export</button>
@@ -201,10 +190,8 @@
             style="padding: 10px; cursor: pointer; background: #389ee3; color: #fff; border: none; border-radius: 4px; font-weight: bold;">Import</button>
         <div style="flex-grow: 1;"></div>
         <button id="btn-back"
-            style="padding: 10px; cursor: pointer; background: #ed5247; color: #fff; border: none; border-radius: 4px; font-weight: bold;">Back
-            to Menu</button>
+            style="padding: 10px; cursor: pointer; background: #ed5247; color: #fff; border: none; border-radius: 4px; font-weight: bold;">Back to Menu</button>
     </div>
-    <div id="tile-requirements"></div>
     <script type="module" src="/src/main.ts"></script>
 </body>
 

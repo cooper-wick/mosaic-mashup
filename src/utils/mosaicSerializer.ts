@@ -5,43 +5,29 @@ import { palette } from "./constants";
 import { ColorNumber } from "../model/types/color";
 
 export class MosaicSerializer {
-
     /**
-     * Serializes a completed mosaic into a compressed string format.
-     * Format: "Name"|Width|Height|Hex-ID|Hex-ID...||ID,x,y|ID,x,y...
+     * Serializes a CompletedMosaic into a string.
+     * Format: name|width|height|#HEX-localID|...||localID,x,y|...
      */
     static serialize(mosaic: CompletedMosaic): string {
-        const usedColors = new Map<number, number>(); // Global ID -> Local ID
+        // Build a local color map: globalColorID -> localID
+        const globalToLocal = new Map<number, number>();
         const colorDefs: string[] = [];
-        let nextLocalID = 0;
 
         for (const tile of mosaic.tiles) {
-            const globalID = tile.colorID;
-            if (!usedColors.has(globalID)) {
-                const localID = nextLocalID++;
-                usedColors.set(globalID, localID);
-
-                // Get hex from global palette
-                // Note: palette.getColor returns ColorEntry which has .css (hex)
-                // In case of invalid ID, it returns fallback, which is fine.
-                const colorEntry = palette.getColor(globalID);
-                colorDefs.push(`${colorEntry.css}-${localID}`);
+            const gid = tile.colorID as number;
+            if (!globalToLocal.has(gid)) {
+                const localID = globalToLocal.size;
+                globalToLocal.set(gid, localID);
+                const entry = palette.getColor(gid);
+                colorDefs.push(`${entry.css}-${localID}`);
             }
         }
 
-        const headerParts = [mosaic.name, Math.round(mosaic.width).toString(), Math.round(mosaic.height).toString(), ...colorDefs];
-        const header = headerParts.join("|");
-
-        // 2. Serialize tiles
-        const tileStrings: string[] = mosaic.tiles.map(tile => {
-            const localID = usedColors.get(tile.colorID);
-
-            const x = Number(tile.pos.x.toFixed(1));
-            const y = Number(tile.pos.y.toFixed(1));
-            return `${localID},${x},${y}`;
-        });
-
-        const body = tileStrings.join("|");
+        const header = [mosaic.name, mosaic.width, mosaic.height, ...colorDefs].join("|");
+        const body = mosaic.tiles
+            .map(t => `${globalToLocal.get(t.colorID as number)},${t.pos.x},${t.pos.y}`)
+            .join("|");
 
         return `${header}||${body}`;
     }
@@ -49,7 +35,7 @@ export class MosaicSerializer {
     /**
      * Deserializes a string back into a CompletedMosaic.
      */
-    static deserialize(data: string): CompletedMosaic {
+    static deserialize(data: string, scalar: number = 1): CompletedMosaic {
         try {
             const parts = data.split("||");
             if (parts.length < 2) {
@@ -68,10 +54,6 @@ export class MosaicSerializer {
             const headerParts = headerStr.split("|");
             const name = headerParts[0];
 
-            // Backward compatibility check or just strict format?
-            // Let's assume strict new format: Name|W|H|Colors...
-            // If the 2nd part contains # or is not a number, it might be old format?
-            // The user requested a refactor, so let's enforce new format or provide defaults.
             let width = 1000;
             let height = 1000;
             let colorStartIndex = 1;
@@ -139,10 +121,9 @@ export class MosaicSerializer {
                 }
             }
 
-            return new CompletedMosaic(name, width, height, tiles);
+            return new CompletedMosaic(name, width, height, tiles, scalar);
 
         } catch (e) {
-            console.error("Failed to deserialize mosaic:", e);
             throw e;
         }
     }

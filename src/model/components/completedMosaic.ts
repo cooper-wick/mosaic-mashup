@@ -7,19 +7,21 @@ export class CompletedMosaic implements Mosaic {
     width: number;
     height: number;
     tiles: Tile[];
+    scalar: number = 1;
 
-    constructor(name: string, width: number, height: number, tiles: Tile[]) {
+    constructor(name: string, width: number, height: number, tiles: Tile[], scalar = 1) {
         this.name = name;
         this.width = width;
         this.height = height;
         this.tiles = tiles;
+        this.scalar = scalar;
     }
 
     getWinTiles(): Map<ColorNumber, number> {
         const winTiles = new Map<ColorNumber, number>();
         for (const tile of this.tiles) {
             const count = winTiles.get(tile.colorID) || 0;
-            winTiles.set(tile.colorID, count + 0.1);
+            winTiles.set(tile.colorID, count + this.scalar);
         }
         // Make sure each is a min of 1 and round to nearest whole number
         winTiles.forEach((value, key) => {
