@@ -11,12 +11,14 @@ import { LobbyScreen } from "./lobbyScreen";
 
 import { CompletedMosaic } from "../model/components/completedMosaic";
 import { MosaicSerializer } from "../utils/mosaicSerializer";
+import type { ColorEntry } from "../utils/colorPalette";
 
 export class DrawScreen implements Screen {
     private tiles: Tile[] = [];
     private backgroundImage: HTMLImageElement | null = null;
     private isDragging = false;
     private draggedTile: Tile | null = null;
+    private savedPalette: ColorEntry[] = [];
 
     constructor(
         private manager: ScreenManager,
@@ -25,6 +27,10 @@ export class DrawScreen implements Screen {
     ) { }
 
     enter() {
+        // Reset palette to empty so image colors aren't snapped to game defaults
+        this.savedPalette = Array.from(palette.entries);
+        palette.setColors([]);
+
         // Show draw controls
         const controls = document.getElementById("draw-controls");
         if (controls) controls.style.display = "flex";
@@ -140,6 +146,9 @@ export class DrawScreen implements Screen {
 
         // Re-enable context menu
         window.removeEventListener("contextmenu", this.handleContextMenu);
+
+        // Restore the game palette
+        palette.setColors(this.savedPalette);
     }
 
     private handleContextMenu = (e: Event) => {
