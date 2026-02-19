@@ -33,24 +33,20 @@ Co-developed with [Henry Abrahamsen](https://github.com/hen1227).
     <td align="center">
       <img width="260" height="447" alt="Screenshot 2026-02-19 at 10 59 04 AM" src="https://github.com/user-attachments/assets/82644c1d-1b30-4b4f-a77b-2d559411fc5d" />
       <br />
-      <em>Home Screen</em>
     </td>
     <td align="center">
-      <img src="path/to/screenshot2.png" width="350" />
+      <img width="264" height="447" alt="Screenshot 2026-02-19 at 10 59 22 AM" src="https://github.com/user-attachments/assets/f10b9ea4-2403-4588-a625-b4c24d2671ab" />
       <br />
-      <em>Tile selection and chaining</em>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="path/to/screenshot3.png" width="350" />
+      <img width="261" height="442" alt="Screenshot 2026-02-19 at 10 59 40 AM" src="https://github.com/user-attachments/assets/2752e795-9776-487a-a051-6be8c319780f" />
       <br />
-      <em>Mosaic reveal animation</em>
     </td>
     <td align="center">
-      <img src="path/to/screenshot4.png" width="350" />
+      <img width="260" height="443" alt="Screenshot 2026-02-19 at 10 59 52 AM" src="https://github.com/user-attachments/assets/f468aab3-ddcd-4af9-800e-db1669d2ca6c" />
       <br />
-      <em>Completed mosaic artwork</em>
     </td>
   </tr>
   <tr>
