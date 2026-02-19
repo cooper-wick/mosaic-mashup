@@ -94,19 +94,12 @@ export class DrawScreen implements Screen {
                 const name = txtName.value || "Untitled";
                 if (this.tiles.length === 0) { alert("No tiles to export!"); return; }
 
-                // Normalize tile positions to a 512x512 grid before serializing
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                for (const t of this.tiles) {
-                    minX = Math.min(minX, t.pos.x); minY = Math.min(minY, t.pos.y);
-                    maxX = Math.max(maxX, t.pos.x); maxY = Math.max(maxY, t.pos.y);
-                }
-                const cW = maxX - minX || 1;
-                const cH = maxY - minY || 1;
-                const scale = Math.min(512 / cW, 512 / cH);
-                const padX = (512 - cW * scale) / 2;
-                const padY = (512 - cH * scale) / 2;
+                // Convert tile positions from viewport space to 512x512 grid space.
+                // The 512x512 grid is centered in the viewport, so subtract its top-left offset.
+                const offsetX = (viewport.width - 512) / 2;
+                const offsetY = (viewport.height - 512) / 2;
                 const normalizedTiles = this.tiles.map(t => new GameTile(
-                    { x: (t.pos.x - minX) * scale + padX, y: (t.pos.y - minY) * scale + padY },
+                    { x: t.pos.x - offsetX, y: t.pos.y - offsetY },
                     { x: 0, y: 0 }, t.size, t.colorID as any
                 ));
 
@@ -220,6 +213,7 @@ export class DrawScreen implements Screen {
 
     onResize() {
         resizeGL(this.glCtx);
+        this.updateBackgroundLayout();
     }
 
     private handleImageUpload(event: Event) {
@@ -230,20 +224,42 @@ export class DrawScreen implements Screen {
                 const img = new Image();
                 img.onload = () => {
                     this.backgroundImage = img;
-                    console.log(img)
-                    console.log(e.target?.result)
                     const bgLayer = document.getElementById("background-layer");
                     if (bgLayer) {
                         bgLayer.style.backgroundImage = `url('${e.target?.result}')`;
-                        bgLayer.style.backgroundSize = "contain";
                         bgLayer.style.backgroundRepeat = "no-repeat";
-                        bgLayer.style.backgroundPosition = "center";
+                        this.updateBackgroundLayout();
                     }
                 };
                 img.src = e.target?.result as string;
             };
             reader.readAsDataURL(input.files[0]);
         }
+    }
+
+    private updateBackgroundLayout() {
+        if (!this.backgroundImage) return;
+        const bgLayer = document.getElementById("background-layer");
+        if (!bgLayer) return;
+
+        const imgRatio = this.backgroundImage.width / this.backgroundImage.height;
+
+        // Fit within 512x512, preserving aspect ratio
+        let renderW: number, renderH: number;
+        if (imgRatio >= 1) {
+            renderW = Math.min(512, viewport.width);
+            renderH = renderW / imgRatio;
+        } else {
+            renderH = Math.min(512, viewport.height);
+            renderW = renderH * imgRatio;
+        }
+
+        // Center within the canvas (viewport) area, not the full window
+        const posX = (viewport.width - renderW) / 2;
+        const posY = (viewport.height - renderH) / 2;
+
+        bgLayer.style.backgroundSize = `${renderW}px ${renderH}px`;
+        bgLayer.style.backgroundPosition = `${posX}px ${posY}px`;
     }
 
     onPointerDown(x: number, y: number, event?: MouseEvent | TouchEvent) {
@@ -329,34 +345,21 @@ export class DrawScreen implements Screen {
     private sampleColor(x: number, y: number): number {
         if (!this.backgroundImage) return 0;
 
-        // Use the background layer's actual dimensions for the contain calculation,
-        // not viewport.width/height — in draw mode the viewport is narrowed for the
-        // sidebar but the background-layer div still spans the full 100vw × 100vh.
-        const bgLayer = document.getElementById("background-layer");
-        const containerW = bgLayer ? bgLayer.offsetWidth : window.innerWidth;
-        const containerH = bgLayer ? bgLayer.offsetHeight : window.innerHeight;
-
         const imgRatio = this.backgroundImage.width / this.backgroundImage.height;
-        const screenRatio = containerW / containerH;
 
-        let renderW, renderH, renderX, renderY;
-
-        // "Contain" logic:
-        // If screen is wider (larger ratio) than image, image is height-constrained.
-        if (screenRatio > imgRatio) {
-            renderH = containerH;
-            renderW = containerH * imgRatio;
-            renderY = 0;
-            renderX = (containerW - renderW) / 2;
+        // Mirror updateBackgroundLayout: fit within 512x512, centered in the canvas area
+        let renderW: number, renderH: number;
+        if (imgRatio >= 1) {
+            renderW = Math.min(512, viewport.width);
+            renderH = renderW / imgRatio;
         } else {
-            // Screen is narrower, image is width-constrained.
-            renderW = containerW;
-            renderH = containerW / imgRatio;
-            renderX = 0;
-            renderY = (containerH - renderH) / 2;
+            renderH = Math.min(512, viewport.height);
+            renderW = renderH * imgRatio;
         }
+        const renderX = (viewport.width - renderW) / 2;
+        const renderY = (viewport.height - renderH) / 2;
 
-        // Map screen coordinates to image coordinates
+        // Map canvas coordinates to image coordinates
         const ix = Math.floor((x - renderX) * (this.backgroundImage.width / renderW));
         const iy = Math.floor((y - renderY) * (this.backgroundImage.height / renderH));
 
