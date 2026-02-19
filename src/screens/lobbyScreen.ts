@@ -1,6 +1,7 @@
 import { Screen } from "../model/types/screen";
 import { ScreenManager } from "./screenManager";
 import { GameplayScreen } from "./gameplayScreen";
+import { DrawScreen } from "./drawScreen";
 import { VoronoiContext, render } from "../shaders/rendering";
 import { Tile } from "../model/types/tile";
 import { GameTile } from "../model/components/gameTile";
@@ -34,6 +35,10 @@ export class LobbyScreen implements Screen {
         const btnPlay3 = document.getElementById("btn-play-3");
         if (btnPlay3) {
             btnPlay3.onclick = () => this.startGame(2);
+        }
+        const btnCreateLevel = document.getElementById("btn-create-level");
+        if (btnCreateLevel) {
+            btnCreateLevel.onclick = () => this.manager.switch(new DrawScreen(this.manager, this.glCtx, this.overlay));
         }
 
         // Hide bucket container (if it exists) since it's not relevant in lobby
