@@ -92,7 +92,25 @@ export class DrawScreen implements Screen {
         if (btnExport && txtData && txtName) {
             btnExport.onclick = () => {
                 const name = txtName.value || "Untitled";
-                const mosaic = new CompletedMosaic(name, viewport.width, viewport.height, this.tiles);
+                if (this.tiles.length === 0) { alert("No tiles to export!"); return; }
+
+                // Normalize tile positions to a 512x512 grid before serializing
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (const t of this.tiles) {
+                    minX = Math.min(minX, t.pos.x); minY = Math.min(minY, t.pos.y);
+                    maxX = Math.max(maxX, t.pos.x); maxY = Math.max(maxY, t.pos.y);
+                }
+                const cW = maxX - minX || 1;
+                const cH = maxY - minY || 1;
+                const scale = Math.min(512 / cW, 512 / cH);
+                const padX = (512 - cW * scale) / 2;
+                const padY = (512 - cH * scale) / 2;
+                const normalizedTiles = this.tiles.map(t => new GameTile(
+                    { x: (t.pos.x - minX) * scale + padX, y: (t.pos.y - minY) * scale + padY },
+                    { x: 0, y: 0 }, t.size, t.colorID as any
+                ));
+
+                const mosaic = new CompletedMosaic(name, 512, 512, normalizedTiles);
                 const data = MosaicSerializer.serialize(mosaic);
                 txtData.value = data;
                 alert("Mosaic exported to text box!");
@@ -106,7 +124,25 @@ export class DrawScreen implements Screen {
                     if (!data) return;
                     const mosaic = MosaicSerializer.deserialize(data);
 
-                    // Center the 512x512 mosaic grid in the available canvas
+                    // Normalize imported tiles to a 512x512 grid (handles any source size)
+                    if (mosaic.tiles.length > 0) {
+                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                        for (const t of mosaic.tiles) {
+                            minX = Math.min(minX, t.pos.x); minY = Math.min(minY, t.pos.y);
+                            maxX = Math.max(maxX, t.pos.x); maxY = Math.max(maxY, t.pos.y);
+                        }
+                        const cW = maxX - minX || 1;
+                        const cH = maxY - minY || 1;
+                        const scale = Math.min(512 / cW, 512 / cH);
+                        const padX = (512 - cW * scale) / 2;
+                        const padY = (512 - cH * scale) / 2;
+                        for (const t of mosaic.tiles) {
+                            t.pos.x = (t.pos.x - minX) * scale + padX;
+                            t.pos.y = (t.pos.y - minY) * scale + padY;
+                        }
+                    }
+
+                    // Center the 512x512 grid in the available canvas
                     const offsetX = (viewport.width - 512) / 2;
                     const offsetY = (viewport.height - 512) / 2;
                     for (const tile of mosaic.tiles) {
