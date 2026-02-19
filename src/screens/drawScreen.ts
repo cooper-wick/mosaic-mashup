@@ -99,7 +99,10 @@ export class DrawScreen implements Screen {
                 const offsetX = (viewport.width - 512) / 2;
                 const offsetY = (viewport.height - 512) / 2;
                 const normalizedTiles = this.tiles.map(t => new GameTile(
-                    { x: t.pos.x - offsetX, y: t.pos.y - offsetY },
+                    {
+                        x: Math.round((t.pos.x - offsetX) * 10) / 10,
+                        y: Math.round((t.pos.y - offsetY) * 10) / 10,
+                    },
                     { x: 0, y: 0 }, t.size, t.colorID as any
                 ));
 
@@ -117,8 +120,8 @@ export class DrawScreen implements Screen {
                     if (!data) return;
                     const mosaic = MosaicSerializer.deserialize(data);
 
-                    // Normalize imported tiles to a 512x512 grid (handles any source size)
-                    if (mosaic.tiles.length > 0) {
+                    // Normalize imported tiles to 512x512 only if not already in that space
+                    if (mosaic.tiles.length > 0 && (mosaic.width !== 512 || mosaic.height !== 512)) {
                         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                         for (const t of mosaic.tiles) {
                             minX = Math.min(minX, t.pos.x); minY = Math.min(minY, t.pos.y);
