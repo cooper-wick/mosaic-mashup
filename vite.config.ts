@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+    base: '/mosaic-mashup/',
     build: {
         target: 'esnext',
         minify: 'esbuild', // Use esbuild for now as it's built-in and very efficient

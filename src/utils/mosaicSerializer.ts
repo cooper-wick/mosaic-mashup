@@ -6,6 +6,33 @@ import { ColorNumber } from "../model/types/color";
 
 export class MosaicSerializer {
     /**
+     * Serializes a CompletedMosaic into a string.
+     * Format: name|width|height|#HEX-localID|...||localID,x,y|...
+     */
+    static serialize(mosaic: CompletedMosaic): string {
+        // Build a local color map: globalColorID -> localID
+        const globalToLocal = new Map<number, number>();
+        const colorDefs: string[] = [];
+
+        for (const tile of mosaic.tiles) {
+            const gid = tile.colorID as number;
+            if (!globalToLocal.has(gid)) {
+                const localID = globalToLocal.size;
+                globalToLocal.set(gid, localID);
+                const entry = palette.getColor(gid);
+                colorDefs.push(`${entry.css}-${localID}`);
+            }
+        }
+
+        const header = [mosaic.name, mosaic.width, mosaic.height, ...colorDefs].join("|");
+        const body = mosaic.tiles
+            .map(t => `${globalToLocal.get(t.colorID as number)},${t.pos.x},${t.pos.y}`)
+            .join("|");
+
+        return `${header}||${body}`;
+    }
+
+    /**
      * Deserializes a string back into a CompletedMosaic.
      */
     static deserialize(data: string, scalar: number = 1): CompletedMosaic {
