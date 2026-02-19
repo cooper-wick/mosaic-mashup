@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
+    <title>Mosaic Mashup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            background: #0f0f23;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: system-ui, sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none
+        }
+
+
+
+        #wrap {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+            /* box-shadow: 0 0 36px rgba(0, 0, 0, .5); */
+            /* border: 1px solid rgba(255, 255, 255, .07); */
+            /* border-radius: 14px; */
+        }
+
+        canvas {
+            display: block
+        }
+
+        #gl {
+            position: relative;
+            z-index: 1;
+        }
+
+        #background-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            background-size: cover;
+            background-position: center;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 50;
+            pointer-events: none
+        }
+
+        #lobby h1 {
+            font-size: 30px;
+            text-align: center;
+            color: #fff;
+            margin-bottom: 24px;
+            text-shadow: 0 2px 18px rgba(0, 0, 0, .7);
+        }
+
+        #btn-play,
+        #btn-play-2,
+        #btn-play-3 {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            background: #2ecc70;
+            border: black 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #btn-play-2 {
+            background: #e67e22;
+        }
+
+        #btn-play-3 {
+            background: #9b59b6;
+        }
+
+        @keyframes pop {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(.8)
+            }
+
+            70% {
+                opacity: 1;
+                transform: translate(-50%, -68%) scale(1.1)
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -85%) scale(1)
+            }
+        }
+    </style>
+  <script type="module" crossorigin src="/mosaic-mashup/assets/index-BGcBxsRY.js"></script>
+  <link rel="stylesheet" crossorigin href="/mosaic-mashup/assets/style-Ciyp90RS.css">
+</head>
+
+<body>
+    <div id="wrap">
+        <div id="background-layer"></div>
+        <canvas id="gl"></canvas>
+        <canvas id="overlay"></canvas>
+        <div id="lobby">
+            <h1>Mosaic Mashup</h1>
+            <button id="btn-play">Play Level 1</button>
+            <button id="btn-play-2">Play Level 2</button>
+            <button id="btn-play-3">Play Level 3</button>
+        </div>
+        <div id="game-instruction">
+            <p>
+                Swipe Adjacent Tiles
+            </p>
+            <p>
+                of Matching Colors
+            </p>
+            <p>
+                to Fill Circles Below
+            </p>
+        </div>
+
+    </div>
+
+    <div id="bucket-container"></div>
+</body>
+
+</html>
