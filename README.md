@@ -11,7 +11,7 @@ Co-developed with [Henry Abrahamsen](https://github.com/hen1227).
 
 ## 🎮 Play Now
 
-[`https://your-game-url.com`](https://cooper-wick.github.io/mosaic-mashup/)
+[`mosaic-mashup`](https://cooper-wick.github.io/mosaic-mashup/)
 
 ---
 
