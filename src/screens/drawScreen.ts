@@ -86,7 +86,7 @@ export class DrawScreen implements Screen {
         if (btnExport && txtData && txtName) {
             btnExport.onclick = () => {
                 const name = txtName.value || "Untitled";
-                const mosaic = new CompletedMosaic(name, this.tiles);
+                const mosaic = new CompletedMosaic(name, viewport.width, viewport.height, this.tiles);
                 const data = MosaicSerializer.serialize(mosaic);
                 txtData.value = data;
                 alert("Mosaic exported to text box!");
